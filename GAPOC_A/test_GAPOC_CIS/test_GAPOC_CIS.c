@@ -77,7 +77,7 @@
 #define EN_AUTOTEST     false
     // If true, the CIS image sensor will produce a test pattern rather than a snapshot of the scene
 
-#define EN_HDR          true
+#define EN_HDR          false
     // If true, High Dynamic Range operation is enabled
     // !!! HDR Mode Settings may need some tuning (also according to expected scene characteristics)
     
@@ -103,10 +103,6 @@
 
 #include "Identify_Image_ROI.h"
 
-#if (DISPLAY == ON_PC)
-  #define PPM_HEADER      40
-#endif
-
 
 // ====  Application's Custom Types    ========================================
 // <none>
@@ -114,13 +110,13 @@
     
 // ==== Application's public global variables  ==============================
 
-#if (DISPLAY == ON_LCD)
+
   GAP_L2_DATA  uint8_t image_buffer[PIC_TARGET_SIZE];
-#else
-  GAP_L2_DATA unsigned char image_buffer[PIC_TARGET_SIZE + PPM_HEADER];
+#if (DISPLAY == ON_LCD)
+  GAP_L2_DATA  uint16_t image_buffer_rgb565[PIC_TARGET_SIZE];
 #endif
 
-GAP_L2_DATA  uint16_t image_buffer_rgb565[PIC_TARGET_SIZE];
+
 
 
 // ==== Application's own global variables  ====================================
@@ -218,11 +214,8 @@ int main()
     GAPOC_MT9V034_CPI_Setup(&GAPOC_MT9V034_Cfg);
     
     // Set-up uDMA for getting data from CPI:
-#if (DISPLAY == ON_LCD)
     GAPOC_MT9V034_uDMA_Config( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
-#else
-    GAPOC_MT9V034_uDMA_Config( image_buffer+PPM_HEADER, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
-#endif
+
 
      
     //  === COLD BOOT ONLY INITIALIZATIONS ==================================================================================
@@ -271,11 +264,8 @@ while(1)
 
     // Set-up uDMA for getting data from CPI  [uDMA registers did not survive low-power mode]
         //redundant if going to deep sleep with mandatory reboot at end of while "loop" (loop executed only once in that case!)   
-#if (DISPLAY == ON_LCD)
     GAPOC_MT9V034_uDMA_Config( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
-#else
-    GAPOC_MT9V034_uDMA_Config( image_buffer+PPM_HEADER, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
-#endif
+
          
     // (Re-)Start MT9V034 chip   
     DBG_PRINT("\nCIS restarting\n");              
@@ -380,8 +370,7 @@ while(1)
 
         sprintf(imgName, "../../../img_OUT%d.ppm", (int)imgNum++);
         printf("imgName: %s\n", imgName);
-//        WriteImageToFile(imgName, CAM_W_RES, CAM_H_RES, (image_buffer + PPM_HEADER));
-        WriteImageToFile(imgName, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, (image_buffer + PPM_HEADER));
+        WriteImageToFile(imgName, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, (image_buffer));
 #endif
 
 
