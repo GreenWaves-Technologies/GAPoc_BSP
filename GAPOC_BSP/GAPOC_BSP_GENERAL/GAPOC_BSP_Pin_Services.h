@@ -33,6 +33,8 @@ void GAPOC_GPIO_Init_HighZ(PinName GPIO_Name); // In High-Z mode, pin is configu
 void GAPOC_GPIO_Init_JustPull(PinName GPIO_Name);
 void GAPOC_GPIO_Init_Input_Float(PinName GPIO_Name);
 void GAPOC_GPIO_Init_Input_Pull(PinName GPIO_Name);
+void GAPOC_GPIO_Init_Bidir_Low(PinName GPIO_Name);
+void GAPOC_GPIO_Init_Bidir_High(PinName GPIO_Name);
 
 //int GAPOC_BSP_Board_Init(void);
     
@@ -199,12 +201,12 @@ static inline uint8_t GAPOC_GpioPin_As_Bidir(PinName GPIO_Name )
 
 /** Function : GAPOC_GPIO_Is_High 
     Action : Returns true if GPIO_Name is at high logic level, else false
-    The pin must have been set as Alternate-1 to behave as GPIO first, in input or bidir mode
+    The pin must have been initialized as GPIO first, in input or bidir mode, eg. using GAPOC_GPIO_Init_xxx(xx)
 */
 
 static inline bool GAPOC_GPIO_Is_High(PinName GPIO_Name)
 {
-    if (GPIO_ReadPinInput(gpio_addrs[GET_GPIO_PORT(GPIO_Name)], GET_GPIO_NUM(GPIO_Name)==1))
+    if ( GPIO_ReadPinInput(gpio_addrs[GET_GPIO_PORT(GPIO_Name)], GET_GPIO_NUM(GPIO_Name) ) ==1 )
         return true;
     else
         return false;
@@ -214,7 +216,7 @@ static inline bool GAPOC_GPIO_Is_High(PinName GPIO_Name)
 
 /** Function : GAPOC_GPIO_Set_High 
     Action : Sets 'GPIO_Name' to high logic level  
-    The pin must have been set as Alternate-1 to behave as GPIO first, in output or bidir mode
+    The pin must have been initialized as GPIO first, in output or bidir mode, eg. using GAPOC_GPIO_Init_xxx(xx)
 */
 
 static inline void GAPOC_GPIO_Set_High(PinName GPIO_Name)
@@ -226,7 +228,7 @@ static inline void GAPOC_GPIO_Set_High(PinName GPIO_Name)
 
 /** Function : GAPOC_GPIO_Set_Low 
     Action : Sets 'GPIO_Name' to low logic level  
-    The pin must have been set as Alternate-1 to behave as GPIO first, in output or bidir mode
+    The pin must have been initialized as GPIO first, in output or bidir mode, eg. using GAPOC_GPIO_Init_xxx(xx)
 */
 
 static inline void GAPOC_GPIO_Set_Low(PinName GPIO_Name)
@@ -238,7 +240,7 @@ static inline void GAPOC_GPIO_Set_Low(PinName GPIO_Name)
 
 /** Function : GAPOC_GPIO_Toggle 
     Action : Toggle 'GPIO_Name'  
-    The pin must have been set as Alternate-1 to behave as GPIO first, in output or bidir mode
+    The pin must have been initialized as GPIO first, in output or bidir mode, eg. using GAPOC_GPIO_Init_xxx(xx)
 */
 
 static inline void GAPOC_GPIO_Toggle(PinName GPIO_Name)
