@@ -135,6 +135,32 @@ void GAPOC_GPIO_Init_Input_Pull(PinName GPIO_Name)
     GAPOC_GpioPin_As_Input(GPIO_Name);
 }
 
+// ------------------------------------------------------
+
+/** Function : GAPOC_GPIO_Init_Bidir_High 
+    Action : Configures pin 'GPIO_Name' as GPIO in bidirectional mode and initializes it to high logic level
+*/
+
+void GAPOC_GPIO_Init_Bidir_High(PinName GPIO_Name)
+{
+    GAPOC_AnyPin_Config(GPIO_Name, NOPULL, uPORT_MuxGPIO );  // set pin as GPIO with no pull-up/down
+    GAPOC_GPIO_Set_High(GPIO_Name);
+    GAPOC_GpioPin_As_Bidir(GPIO_Name);
+}
+
+// ------------------------------------------------------
+
+/** Function : GAPOC_GPIO_Init_Bidir_Low 
+    Action : Configures pin 'GPIO_Name' as GPIO in bidirectional mode and initializes it to low logic level
+*/
+
+void GAPOC_GPIO_Init_Bidir_Low(PinName GPIO_Name)
+{
+    GAPOC_AnyPin_Config(GPIO_Name, NOPULL, uPORT_MuxGPIO );  // set pin as GPIO with no pull-up/down
+    GAPOC_GPIO_Set_Low(GPIO_Name);
+    GAPOC_GpioPin_As_Bidir(GPIO_Name);
+}
+
 
  // TODO - Cope with GPIO as IRQ source
  

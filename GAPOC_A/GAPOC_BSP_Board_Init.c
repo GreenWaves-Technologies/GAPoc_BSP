@@ -10,7 +10,6 @@
 // ====  Includes    ===========================================================
 
 #include "GAPOC_BSP_General.h"
-#include "hyperbus_api.h"
 
 
 // ====  Imported Global Variables  ============================================
@@ -133,16 +132,14 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
 
 
 // ** HYPERBUS INTERFACE
-// TODO -- May need to make this condition to some paltform #defines to cope with platform w/o ext memory
-//          and platform using QSPI Flash/RAM rather than Hyperbus..
+// TODO -- May need to use a #define to restrict this to platforms using HyperBus -- some other platforms may work w/o ext memory
+//          or use QSPI Flash/RAM rather than Hyperbus..
     // Set HyperMem interface (move to general init) :
     hyperbus_t hyperbus0;
-// !!!! TODO -- Undersnt this: For some reason if I initialize hyperbus then IT from non blocking (uart or all?) transactions are not seen ??!!??
-/*
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);
-*/
+
 
  // TODO - TBD - Also initalize other non-GPIO pins here ?
  // e.g.may make sense to output NINA module in sleep mode

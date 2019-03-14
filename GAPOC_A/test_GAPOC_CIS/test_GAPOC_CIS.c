@@ -58,9 +58,20 @@
 
 #define ON_LCD  0
 #define ON_PC   1    
-#define DISPLAY ON_PC
-    // This is to select if you want the pictures to be displayed on an Adafruit LCD attached to GAPOC
-    // (select ON_LCD) or to be saved as .ppm on PC (select ON_PC) -- in this case you must have JTAG connected 
+
+
+
+/** ****************************
+// Select here if you want the pictures to be displayed on an Adafruit LCD attached to GAPOC
+// (select ON_LCD) or to be saved as .ppm on PC (select ON_PC) -- in this case you must have JTAG connected 
+** ****************************/
+// ===========================
+
+#define DISPLAY     ON_PC    
+
+// ===========================
+
+
     
 #define PIC_TARGET_WIDTH    (((640/2)/4)*4)    
     // Width of picture you want to obtain, max is 752 (WVGA)

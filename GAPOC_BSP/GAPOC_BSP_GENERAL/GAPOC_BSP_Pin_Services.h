@@ -202,6 +202,9 @@ static inline uint8_t GAPOC_GpioPin_As_Bidir(PinName GPIO_Name )
 /** Function : GAPOC_GPIO_Is_High 
     Action : Returns true if GPIO_Name is at high logic level, else false
     The pin must have been initialized as GPIO first, in input or bidir mode, eg. using GAPOC_GPIO_Init_xxx(xx)
+    // !!! *BEWARE* if pin is bidir i.e. both input and output functions are enabled,
+    // !!!  then GPIO_ReadPinInput() returns the *programmed output value* rather than the actual value present
+    // !!!  on pin -- so does not reflect reality in case of external driver overrriding the value on external pin
 */
 
 static inline bool GAPOC_GPIO_Is_High(PinName GPIO_Name)

@@ -59,7 +59,7 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     
     DBG_PRINT("Frequency = %d Hz, Voltage = %d mv\n", (int)FLL_GetFrequency(uFLL_SOC), (int)voltage_mV);
     
- 
+
     // -- GAPMod Pins  -------------------------
     
     
@@ -70,11 +70,16 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     // *** GAPMod Pin #1 = GAPA4_CONN = SPI1_MISO (for use on Connector CONN3, not available on Sensor Connector CONN9
     GAPOC_AnyPin_Config( A4, NOPULL, uPORT_MuxAlt0 );  // pin GAP_A4 keeps default function = SPIM1_MISO (input)
         // !! BEWARE !! GAPA4 can also be bear GPIO0 but in this implementation GPIO0 is already used on pin GAP_A3 
-        // !!  ==> risk of conflict. DO NOT USE GAP_A4 as GPIO0 here.
-            
+        // !!  ==> risk of conflict. DO NOT USE GAP_A4 as GPIO0 here.    
+    
+                
     // *** GAPMod Pin #2 = GAPB3_CONN = SENSOR_SPI_MOSI
-    GAPOC_AnyPin_Config( B3, NOPULL, uPORT_MuxAlt0 );  // pin GAP_B3 keeps default function = SPIM1_MOSI (output)
-            
+//   GAPOC_AnyPin_Config( B3, NOPULL, uPORT_MuxAlt0 );  // pin GAP_B3 keeps default function = SPIM1_MOSI (output)
+        // !! BEWARE !! GAPB3 can also be bear GPIO1 but in this implementation GPIO1 is already used on pin GAP_B2 
+        // !!  ==> risk of conflict. DO NOT USE GAP_A4 as GPIO0 here.  
+// DBG:
+    GAPOC_GPIO_Init_JustPull(GPIO_A1_B3); 
+                
     // *** GAPMod Pin #3 = LED_G/GPIOGAP_SW1 = GAP_A3 = GPIO0
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A0_A3);      
     
@@ -84,7 +89,7 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     // *** GAPMod Pin #5 = GPIOGAP_NINARST# = GAP_A2 =  GPIO2
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A2_A2);      
         
-    // *** GAPMod Pin #6 = GPIO_CSI_TRIGGER = GAP_B1  = GPIO3
+    // *** GAPMod Pin #6 = GPIO_CIS_TRIGGER = GAP_B1  = GPIO3
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A3_B1);       
         
     // *** GAPMod Pin #7 = GPIO_1V8_EN = GAP_A44
@@ -94,15 +99,16 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     GAPOC_GPIO_Init_Pure_Output_High(GPIO_A4_A44);     // = GPIO_1V8_EN  -->  1V8 still supplied to HyperMem after init (in line w/ weak Pull-up on this signal on-board)
 #endif
 
-    // *** GAPMod Pin #8 = GPIO_CIS_APWRON / GAP_D1 = GPIO16
+    // *** GAPMod Pin #8 = GPIO_CIS_DPWRON / GAP_D1 = GPIO16
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A16);           
         
     // *** GAPMod Pin #9 = GPIO_CIS_APWRON / GAP_B40 = GPIO5
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A5_B40);           
-        
+      
     // *** GAPMod Pin #10 =  GAP_A43 = CPI_PCLK
     GAPOC_AnyPin_Config( A43, NOPULL, uPORT_MuxAlt0 );    //keep default function = CPI 
-        
+    
+/*        
     // *** GAPMod Pin #11 =  GAP_B39 = CPI_D0
     GAPOC_AnyPin_Config( B39, NOPULL, uPORT_MuxAlt0 );   
         
@@ -123,12 +129,13 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
         
     // *** GAPMod Pin #17 =  GAP_A38 = CPI_D7
     GAPOC_AnyPin_Config( A38, NOPULL, uPORT_MuxAlt0 );   
-        
+*/        
     // *** GAPMod Pin #18 =  GAP_A37 = CPI_HSYNC
     GAPOC_AnyPin_Config( A37, NOPULL, uPORT_MuxAlt0 );   
-        
+/*        
     // *** GAPMod Pin #19 =  GAP_A36 = CPI_VSYNC
     GAPOC_AnyPin_Config( A36, NOPULL, uPORT_MuxAlt0 );     //keep default function = CPI
+*/
         
     // *** GAPMod Pin #20 = GND   
     // *** GAPMod Pin #20bis = GAP_VREGOUT (analog)   
@@ -158,13 +165,13 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     // *** GAPMod Pin #39 = GND        
     // *** GAPMod Pin #40 = NRESET        
     // *** GAPMod Pin #41 = HYPER_RSTO#    
-     
+/*     
     // *** GAPMod Pin #42 = GAP_A7_VT = UART_GAP_TX (or GPIO25)    
     GAPOC_AnyPin_Config( A7, NOPULL, uPORT_MuxAlt0 );   // keep default function = UART_GAP_TX
     
     // *** GAPMod Pin #43 = GAP_B6_VT = UART_GAP_RX (or GPIO24)    
     GAPOC_AnyPin_Config( B6, NOPULL, uPORT_MuxAlt0 );   // keep default function = UART_GAP_RX
-             
+*/             
     // *** GAPMod Pin #44 = GAP_B12 = GPIO19 -- available on Connector    
     GAPOC_GPIO_Init_JustPull(GPIO_A19); 
          
@@ -172,10 +179,10 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     GAPOC_GPIO_Init_JustPull(GPIO_A18); 
          
     // *** GAPMod Pin #46 = GND    
-     
-    // *** GAPMod Pin #47 = GAP_B11 = GPIO_A17 = GPIO_CIS_LED_EN#    
-    GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A17);       
-         
+/*     
+    // *** GAPMod Pin #47 = GAP_B11 = GPIO_A17 = GPIO_CIS_LED_EN#  ** low = enable, high = enable, invert signal, high-Z = OFF  
+    GAPOC_GPIO_Init_HighZ(GPIO_A17);       
+*/         
     // *** GAPMod Pin #48 = GND    
      
     // *** GAPMod Pin #49 = GAP_A5 = SENSOR_SPI_CS0
@@ -190,15 +197,15 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
                  
     // *** GAPMod Pin #51 = GND    
      
-    // *** GAPMod Pin #52 = GAP_B34 = GPIO_A15 = GPIO_CISCLK (either enables/disables ClkGen to IR Sensor Proxy Connector or directly srives it as PWM)
-    GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A15);       
+    // *** GAPMod Pin #52 = GAP_B34 = GPIO_A15 = GPIO_CISCLK -- enables/disables ClkGen to IR Sensor Proxy Connector (**active LOW**) or directly drives it as PWM
+    GAPOC_GPIO_Init_Pure_Output_High(GPIO_A15);       
          
     // *** GAPMod Pin #53 = VCAM_IO (2V5)    
     // *** GAPMod Pin #54 = GND    
-     
+/*     
     // *** GAPMod Pin #55 = GAP_B37 = CPI_D4
     GAPOC_AnyPin_Config( B36, NOPULL, uPORT_MuxAlt0 );   //keep default function = CPI
-         
+*/         
     // *** GAPMod Pin #56 = VCAM_IO (2V5)    
      
     // *** GAPMod Pin #57 = GAP_B27 = JTAG_NTRST    
@@ -216,7 +223,7 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     // *** GAPMod Pin #64 = GAP_B13 = GPIOGAP_NINA17    
     GAPOC_GPIO_Init_Pure_Output_High(GPIO_A21);  // can be used as UART_DSR input on Nina (high= de-asserted)     
     
-    
+   
     
     // -- GAP8 I/Os not visible at GAPMod pin level :  -------------------------
     
@@ -224,10 +231,11 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     // !! BEWARE:  currently it looks like there's a bug in SDK which causes non-blocking CPI/UART/other? transfers to 
     //    fail (no callback) when HyperBus interface is enbaled !!???!!
     hyperbus_t hyperbus0;
+    /*
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);    
-    
+    */
         
  // TODO - TBD - Also initalize other non-GPIO pins here ?
  // e.g.may make sense to output NINA module in sleep mode

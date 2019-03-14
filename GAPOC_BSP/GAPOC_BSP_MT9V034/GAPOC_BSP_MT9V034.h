@@ -36,6 +36,8 @@ int8_t    GAPOC_MT9V034_Start(GAPOC_MT9V034_Cfg_t* pGAPOC_MT9V034_Cfg);  // retu
 
 void GAPOC_MT9V034_Off();
 
+void GAPOC_MT9V034_I2C1_Init(uint32_t i2c_freq_hz);
+
 void GAPOC_MT9V034_CPI_Setup(GAPOC_MT9V034_Cfg_t* pGAPOC_MT9V034_Cfg); // no parameters passed as using globals -- makes sense or better change ??
 
 void GAPOC_MT9V034_uDMA_Config( unsigned char* dest_buffer, uint32_t buffer_length);

@@ -339,6 +339,24 @@ void  GAPOC_MT9V034_Off()
 }
 
 
+// 
+
+// -------------------------------------------------------
+
+/** Function : GAPOC_MT9V034_I2C_Init 
+    Action : Configures GAP8 pins assigned to I2C1 interfacing with MT9V034 and sets its working frequency
+        as per user definition (through symbol CIS_I2C1_FREQ_KHz)
+*/
+
+void GAPOC_MT9V034_I2C1_Init(uint32_t i2c_freq_hz)
+{
+    i2c_init(&i2c1, I2C1_SDA_B34, I2C1_SCL_D1);  // I2C pins init, I2C udma channel init 
+//    uint32_t i2c_freq_hz = CIS_I2C1_FREQ_KHz * 1000;
+    i2c_frequency(&i2c1, i2c_freq_hz);  
+    DBG_PRINT("I2C1 to MT9V034 configured -- Frequency set to %d KHz\n", CIS_I2C1_FREQ_KHz);
+}
+
+
 // -------------------------------------------------------
 
 /** Function : GAPOC_MT9V034_CPI_Setup 
@@ -353,17 +371,20 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
 
         // -- Init I2C1 for CIS  --------------------------------------  
         
-        // i2c_t i2c1 is global  
+        /*
         i2c_init(&i2c1, I2C1_SDA_B34, I2C1_SCL_D1);  // I2C pins init, I2C udma channel init 
         uint32_t i2c_freq_hz = CIS_I2C1_FREQ_KHz * 1000;
         i2c_frequency(&i2c1, i2c_freq_hz);  
         DBG_PRINT("I2C frequency set to %d KHz\n", CIS_I2C1_FREQ_KHz);
-
+        */
+        // or just:
+        GAPOC_MT9V034_I2C1_Init(CIS_I2C1_FREQ_KHz * 1000);          
+        
         CPI_Init(cpi_address[0], CPI_PCLK, CPI_HSYNC, CPI_VSYNC,
              CPI_DATA0, CPI_DATA1, CPI_DATA2, CPI_DATA3,
              CPI_DATA4, CPI_DATA5, CPI_DATA6, CPI_DATA7); 
 
-        UDMA_Init((UDMA_Type *)cpi_address[0]);                    
+        UDMA_Init((UDMA_Type *)cpi_address[0]); // REMOVE -- as redundant, already included in CPI_Init()  [tbc]            
 
         CPI_GetDefaultConfig(&cpi_config);
         cpi_config.row_len = GAPOC_MT9V034_Cfg.TargetWidth ; 
@@ -388,7 +409,7 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
     Action : Configure uDMA to transfer 'buffer_length' words of 16-bit data (imposed by CPI) into buffer pointed by dest_buffer. 
 */
 
-void GAPOC_MT9V034_uDMA_Config( unsigned char* dest_buffer, uint32_t buffer_length) // no parameters passed as using globals -- makes sense or better change ??
+void GAPOC_MT9V034_uDMA_Config( unsigned char* dest_buffer, uint32_t buffer_length) 
 {
 // TODO - Cope with transfers >128KB
        

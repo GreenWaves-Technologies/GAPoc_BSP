@@ -16,7 +16,7 @@
 #include "i2c_api.h"
 #include "gap_cpi.h"
 #include "serial_api.h"
-
+#include "hyperbus_api.h"
 
 #endif   //####  __GAPOC_BSP_GAP8_H  #####################################################
 

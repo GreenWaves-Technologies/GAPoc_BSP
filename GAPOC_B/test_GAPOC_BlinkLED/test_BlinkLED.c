@@ -81,7 +81,21 @@ int main()
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);
-                      
+   
+   // OPTIONAL (GAPOC B 1.0):
+   // When ULIS IR Proxy is connected, if disabling 4V boost converter we still get some analog voltage to IR sensor on GAPOC_B 1.0
+   // and ~80mA power consumption !
+   // Better turn 4V to sensor on then...
+    GAPOC_GPIO_Set_High( GPIO_CIS_APWRON );   // Turn On AVDD                                
+    GAPOC_GPIO_Set_High( GPIO_CIS_DPWRON );   // Turn On DVDD           
+    // When voltages are established, wait 150ms and apply Master Clock
+    #define  IRPROXY_VDD_SETTLING_TIME_ms   1
+    #define  MCLOCK_TURNON_LATENCY_ms       150
+    wait( (float)(IRPROXY_VDD_SETTLING_TIME_ms+MCLOCK_TURNON_LATENCY_ms)/1000.0  );
+    GAPOC_GPIO_Set_Low( GPIO_CIS_CLK );      // Turn On MCLK (active low control)       
+        // Now sensor is enabled and consuming about 25mA...                            
+
+
 
     // Initialize relevant GPIO as pure output, starting @high logic level
     GAPOC_GPIO_Init_Pure_Output_High( GAPOC_HEARTBEAT_LED );

@@ -46,7 +46,7 @@
 // Needed ?
 
 // Frequency of SPI to Proxy
-#define     SPI_FQCY_IRSENSOR_KHZ   1000    // must be in 10KHz to 1MHz range
+#define     SPI_FQCY_IRSENSOR_KHZ   500    // must be in 10KHz to 1MHz range
 
 
 // --  NINA BLE MODULE RELATED      ----------------------
