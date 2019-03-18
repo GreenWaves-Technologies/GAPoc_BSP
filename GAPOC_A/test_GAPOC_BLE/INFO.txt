@@ -14,4 +14,8 @@ This example does the following :
 - Then GAP8 puts Nina in deep sleep using pin DSR and stops 
   <*** deep sleep entry on Nina using pin DSR doesn't work OK yet ***>
 
-
+----  
+NOTICE:
+    With current silicon there may be problems to use UART Rx (GAP8 receiving) while HyperBus interface is
+    enabled. To use UART Rx, remove HyperBus initialization done in GAPOC_BSP_Board_Init().
+    See also source code test_Nina.c

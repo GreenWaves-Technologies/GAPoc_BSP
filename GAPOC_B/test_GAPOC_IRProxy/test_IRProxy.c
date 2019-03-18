@@ -52,8 +52,8 @@
 
 
 
-#define PIC_WIDTH    80 //(2*80)   // IR Proxy Frame = 80x80 pixels at 2bytes per pix (14bits provided as 2 successive bytes)
-#define PIC_HEIGHT   10 //80    
+#define PIC_WIDTH    (2*2 + 2*80 + 2*2)   // IR Proxy Frame = 80x80 pixels at 2bytes per pix (14bits provided as 2 successive bytes)
+#define PIC_HEIGHT   80    
 #define PIC_SIZE    (PIC_WIDTH * PIC_HEIGHT)  // IR Proxy Frame = 80x80 pixels at 2bytes per pix (14bits provided as 2 successive bytes)
 
 // Move this to BSP:
@@ -120,11 +120,11 @@ CPI_Type *const cpi_address[] = CPI_BASE_PTRS;
 
 static volatile uint32_t Picture_Index = 0;  // to manage non-blocking picture transfer (snapshot)
  
-static cpi_config_t cpi_config;
-static cpi_transfer_t cpiTransfer;  
-static cpi_handle_t hCPI;  
+cpi_config_t cpi_config;
+cpi_transfer_t cpiTransfer;  
+cpi_handle_t hCPI;  
 
-spi_t   spim1;   
+spi_t   spim1;      
 GAP_L2_DATA  uint16_t  spi_word16;
         
       
@@ -168,7 +168,7 @@ int main()
 #else
     #error "you didn't properly #define DISPLAY"   
 #endif
-
+// TODO -- ON_LCD not supported yet
     
     
 
@@ -194,7 +194,7 @@ int main()
              CPI_DATA0, CPI_DATA1, CPI_DATA2, CPI_DATA3,
              CPI_DATA4, CPI_DATA5, CPI_DATA6, CPI_DATA7); 
 // Initiliazes CPI I/Os *and* inits CPI channel of uDMA through UDMA_Init()
-UDMA_Init((UDMA_Type *)cpi_address[0]);     // normally NOT REQUIRED                 
+//UDMA_Init((UDMA_Type *)cpi_address[0]);     // normally NOT REQUIRED, already included above                
 
     // -- Configure CPI i/f       -----------------------------------  
     
@@ -223,7 +223,7 @@ UDMA_Init((UDMA_Type *)cpi_address[0]);     // normally NOT REQUIRED
               
     // -- Start IR Proxy:              ----------------------------------------------------------------------
 
-    GAPOC_GPIO_Set_High(GPIO_CIS_TRIGGER);      // Make sure trigger input is inactive (for snapshot mode) -- active low
+//    GAPOC_GPIO_Set_High(GPIO_CIS_TRIGGER);      // Make sure trigger input is inactive (for snapshot mode B, active low)
     
     // Enable 3V3A/3V3D 
     GAPOC_GPIO_Init_Pure_Output_High( GPIO_CIS_APWRON );              
@@ -243,14 +243,51 @@ UDMA_Init((UDMA_Type *)cpi_address[0]);     // normally NOT REQUIRED
     #define  IRPROXY_SETTLING_TIME_ms       1000.0
     wait( (float) IRPROXY_SETTLING_TIME_ms/1000.0  );  // else upcoming SPI prog may not be properly taken into account
      
-         
     // Proxy is now ready to receive data from SPI Bus...
+
+
+// **DEBUG ***********
+//Reproduce VSYNC on a GPIO visible on connector -- eg. GAP_B12 on CONN3 Pos.8 = GPIO_A19
+
+GAPOC_GPIO_Init_Input_Float( GPIO_A14 );  //VSYNC
+//GAPOC_GPIO_Init_Input_Float( GPIO_A4_A43);  //PCLK
+GAPOC_GPIO_Init_Input_Float( GPIO_A5_A37 );  //HSYNC
+DBG_PRINT("VSYNC,HYSNC or/and PCLK set as input GPIO\n");   
+ 
+GAPOC_GPIO_Init_Pure_Output_Low( GPIO_A19 );  //GAP_B12 on CONN3 Pos 8
+GAPOC_GPIO_Init_Pure_Output_Low( GPIO_A1_B2 );  //GAP_B2 on CONN3 Pos 2  (=heartbeat LED too)
+
+
+while(1)
+{
+// on Conn3 Pos 8
+    if (GAPOC_GPIO_Is_High( GPIO_A5_A37 ))
+    {
+        GAPOC_GPIO_Set_High( GPIO_A19 );
+    }
+    else
+    {
+        GAPOC_GPIO_Set_Low( GPIO_A19 );    
+    }
+
+// on Conn3 Pos 2
+    if (GAPOC_GPIO_Is_High( GPIO_A14))
+    {
+        GAPOC_GPIO_Set_High( GPIO_A1_B2 );
+    }
+    else
+    {
+        GAPOC_GPIO_Set_Low( GPIO_A1_B2 );    
+    }
+
+}
+// **********************
 
            
     // Put sensor in external trigger mode -- Using Mode B a.k.a 'Fullscale trigger' = in fact active low enable signal
-    GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_VAL, IRPROXY_TRIGGER_VAL_TRIGMODE_B);    
-    // Put sensor in freerun  mode -- 
-    //GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_VAL, IRPROXY_TRIGGER_VAL_FREERUN); 
+    // GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_VAL, IRPROXY_TRIGGER_VAL_TRIGMODE_B);    
+    // Put sensor in freerun  mode (=default!) -- 
+    GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_VAL, IRPROXY_TRIGGER_VAL_FREERUN); 
         
     // Set integration Time Value to 20
     GAPOC_IRProxy_WriteReg12( IRPROXY_TINT, 0x020);
@@ -265,21 +302,14 @@ UDMA_Init((UDMA_Type *)cpi_address[0]);     // normally NOT REQUIRED
     GAPOC_IRProxy_WriteReg12( IRPROXY_GMS, 0x053);
     
     // Don't rely on default clkdiv  specified in DS as seen not to match h/w 
-//    GAPOC_IRProxy_WriteReg12( IRPROXY_CKDIV, 0x02);  // so PCLK = 0.5*MCLK/(2**(0x02+1)) = 2.048MHz/16 = 128KHz -- actually seeing 256KHz...
+    GAPOC_IRProxy_WriteReg12( IRPROXY_CKDIV, 0x02);  // so PCLK = 0.5*MCLK/(2**(0x02+1)) = 2.048MHz/16 = 128KHz -- actually seeing 256KHz...
             // Not taken into account if done as first access ???
-    GAPOC_IRProxy_WriteReg12( IRPROXY_CKDIV, 0x01);  // so PCLK = 0.5*MCLK/(2**(0x01+1)) = 2.048MHz/8 = 256KHz -- actually seeing 512KHz...
+//    GAPOC_IRProxy_WriteReg12( IRPROXY_CKDIV, 0x01);  // so PCLK = 0.5*MCLK/(2**(0x01+1)) = 2.048MHz/8 = 256KHz -- actually seeing 512KHz...
     
    
          
     DBG_PRINT("IR Proxy Ready and Configured\n");  
 
-
-// DBG: Try HSYNC/VSYNC/PXCLK as input GPIO
-//GAPOC_GPIO_Init_Input_Float( GPIO_A14 );  //VSYNC
-//GAPOC_GPIO_Init_Input_Float( GPIO_A4_A43);  //PCLK
-//GAPOC_GPIO_Init_Input_Float( GPIO_A5_A37 );  //HSYNC
-//DBG_PRINT("VSYNC,HYSNC or/and PCLK set as input GPIO\n");    
- 
 
     // -- Now capture frames in Snapshot mode with non-blocking reception ---------------------------------------
     
@@ -293,10 +323,41 @@ UDMA_Init((UDMA_Type *)cpi_address[0]);     // normally NOT REQUIRED
     // If trigger mode used: Start camera:
     // GAPOC_GPIO_Set_Low(GPIO_CIS_TRIGGER);   // start capture     
     // DBG_PRINT("Trigger!\n");
-     
+
+/*
+#define PERIOD_usec  10
+#define NUM_ITER 40
+uint32_t acc_elapsed =0, elapsed =0;
+uint32_t max_elapsed = 0;
+uint32_t min_elapsed = 99999999; 
+for (uint32_t i =0; i <NUM_ITER; i++)
+//while(1)
+{   
+    elapsed = 0;
+    while ( !GAPOC_GPIO_Is_High( GPIO_A5_A37) );  // Wait until high   
+    while ( GAPOC_GPIO_Is_High( GPIO_A5_A37) );  // Wait until low to discard first pulse (partially captured)
+
+    while ( !GAPOC_GPIO_Is_High( GPIO_A5_A37) );  // first full pulse            
+    do
+    {
+        wait((float)PERIOD_usec/1000000); 
+        elapsed += PERIOD_usec;
+    } while ( GAPOC_GPIO_Is_High(GPIO_A5_A37) );  // loop until back low
+    // Update Vsync data :
+    acc_elapsed += elapsed;
+    if (elapsed>max_elapsed)  max_elapsed = elapsed;
+    if (elapsed<min_elapsed)  min_elapsed = elapsed;
+}
+DBG_PRINT("Avg. Hsync high duration = %d us\n", (int)(acc_elapsed/NUM_ITER));
+DBG_PRINT("Min. Hsync high duration = %d us\n", (int)min_elapsed);
+DBG_PRINT("Max. Hsync high duration = %d us\n", (int)max_elapsed);
+DBG_PRINT("***\n");
+*/
+
+
 // TRY THIS: Blocking REception
-// CPI_ReceptionBlocking(cpi_address[0], &cpiTransfer);        
-// DBG_PRINT("GOT BLOCKING RECEPTION\n");
+CPI_ReceptionBlocking(cpi_address[0], &cpiTransfer);        
+DBG_PRINT("GOT BLOCKING RECEPTION\n");
 
       
     // Prepare handles for non-blocking camera capture
@@ -351,7 +412,7 @@ printf("Saw PCLK high!\n");
         CPI_ReceptionNonBlocking(cpi_address[0], &hCPI, &cpiTransfer);  
 
 
-        // -- GPIO_CIS_TRIGGER snapshot trigger signal to actually shoot picture !
+        // -- If using trigger mode:  GPIO_CIS_TRIGGER snapshot trigger signal to actually shoot picture !
         GAPOC_GPIO_Set_Low(GPIO_CIS_TRIGGER);   // generate falling edge to trigger snapshot
             //To be set back high by Callback function
  
@@ -392,7 +453,6 @@ addr = (uint32_t*)0x1A1024B0;  printf("CFG_FILTER= 0x%x\n", (int)*addr);
 
 static void Callback_Single_Shot()   // MAy need a __WEAK attribute somewhere
 {   
-DBG_PRINT("CB!\n");     
     GAPOC_GPIO_Set_High(GPIO_CIS_TRIGGER);
     Picture_Index++;    
 }
@@ -416,6 +476,8 @@ void GAPOC_IRProxy_SPI_Init()
 {
         // SPI pins init, SPI udma channel init 
         spi_init(&spim1, SPI1_MOSI, NC, SPI1_SCLK, SPI1_CSN0_A5);
+//        spi_init(&spim1, B3, SPI1_MISO, B4, SPI1_CSN0_A5);
+
 
         // SPI bits, cpha, cpol configuration 
         spi_format(&spim1, 16, 0, 0);  // 16-bit words, idle level =low
@@ -427,34 +489,7 @@ void GAPOC_IRProxy_SPI_Init()
         DBG_PRINT("\nSPI1 initalized\n");
            
 }
-    
-// -------------------------------------------------------------
-/*
-void GAPOC_IRProxy_CPI_Init()
-{
 
-        CPI_Init(cpi_address[0], CPI_PCLK, CPI_HSYNC, CPI_VSYNC,
-             CPI_DATA0, CPI_DATA1, CPI_DATA2, CPI_DATA3,
-             CPI_DATA4, CPI_DATA5, CPI_DATA6, CPI_DATA7); 
-             
-        UDMA_Init((UDMA_Type *)cpi_address[0]);     // REQUIRED ???                
-
-        CPI_GetDefaultConfig(&cpi_config);
-        cpi_config.row_len = IRSENSOR_FRAME_WIDTH ; 
-            // !! Keep equal to target width
-            // Can normally be a portion of window width in slice mode 
-            // but this is buggy on GAP8 Cut1
-        cpi_config.resolution      = PIC_SIZE;
-        cpi_config.format          = BYPASS_BIGEND;  // Monochrome
-        cpi_config.shift           = 0;
-        cpi_config.slice_en        = 0;
-        cpi_config.frameDrop_en    = 0;
-        cpi_config.frameDrop_value = 0;
-        cpi_config.wordWidth       = 16;  // 8, 16 or 32bits // IN FACT IGNORED in CPI DRIVER [gap_cpi.c] !!!!
-        DBG_PRINT("CPI i/f initalized\n");  
- 
-}
-*/
 
 // -----------------------------------------------------------------
 

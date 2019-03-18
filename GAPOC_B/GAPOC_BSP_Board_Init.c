@@ -10,7 +10,6 @@
 // ====  Includes    ===========================================================
 
 #include "GAPOC_BSP_General.h"
-#include "hyperbus_api.h"
 
 
 // ====  Imported Global Variables  ============================================
@@ -228,14 +227,12 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     // -- GAP8 I/Os not visible at GAPMod pin level :  -------------------------
     
     // -- HyperBus i/f
-    // !! BEWARE:  currently it looks like there's a bug in SDK which causes non-blocking CPI/UART/other? transfers to 
-    //    fail (no callback) when HyperBus interface is enbaled !!???!!
+    // !! BEWARE:  Bug requires to disable HyperMem to use UART Rx
     hyperbus_t hyperbus0;
-    /*
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);    
-    */
+    
         
  // TODO - TBD - Also initalize other non-GPIO pins here ?
  // e.g.may make sense to output NINA module in sleep mode

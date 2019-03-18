@@ -38,7 +38,6 @@
 
 // ====  Includes    ==========================================================
 
-// TODO -- Group all includes useful to application in a single GAPOC_BSP.h
 #include "GAPOC_BSP_General.h"
 
 #include "GAPOC_BSP_Nina.h"
@@ -87,8 +86,12 @@ char Resp_String[AT_RESP_ARRAY_LENGTH] ;
     // Initalize Board (GPIO direction and default level, supplies, etc.)
     GAPOC_BSP_Board_Init();
     
-    // Set HyperMem CS (inactive) by using GPIO mode --> only leakage in HyperMem -- sepc says 160uA typ
-    // TODO - Initialize HyperMem i/f in GAPOC_BSP_Board_Init()
+    // NOTICE:
+    // With current silicon there may be problems to use UART Rx (GAP8 receiving) while HyperBus interface is
+    // enabled. To use UART Rx, remove HyperBus initialization done in GAPOC_BSP_Board_Init();
+    
+    // To limit power consumption from HyperMem without initializing HyperBus interface, 
+    // you may pull its nCS low (inactive) by using GPIO mode, e.g. as follows:
     //GAPOC_GPIO_Init_Pure_Output_High(GPIO_A30);  // CSN0 = GPIO30 on B15
     //GAPOC_GPIO_Init_Pure_Output_High(GPIO_A31);  // CSN1 = GPIO31 on A16
 
