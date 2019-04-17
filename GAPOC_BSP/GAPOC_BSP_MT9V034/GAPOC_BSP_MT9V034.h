@@ -18,6 +18,8 @@ typedef struct {
     uint32_t            TargetHeight;      // ditto
     bool                Rescale_CroppingOnly;   // Rescale uisng cropping only (reduces FOV), no binning
     bool                En_HDR;            // Enable High Dynamic Range mode
+    bool                Row_Flip;       // Top-Bottom Mirroring
+    bool                Column_Flip;    // Left-Right Mirroring
     bool                En_Autotest;       // NB - restricting to diagonal grey shade test pattern
     bool                En_Row_Noise_Cancel;
     bool                En_Exposure_LED;  

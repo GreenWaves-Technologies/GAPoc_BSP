@@ -76,13 +76,26 @@ void  GAPOC_LCD_Init(spi_t* spim)
     DBG_PRINT("SPI Config done...\n"); 
 
     ILI9341_begin(spim);
-    setRotation(spim,1);
+//    setRotation(spim,1);
 
-    writeFillRect(spim, 0, 0, lcdW, lcdH, ILI9341_WHITE);       
-    setTextColor(ILI9341_GREEN);
+    writeFillRect(spim, 0, 0, lcdW, lcdH, ILI9341_WHITE);   
+        
+    setTextColor(ILI9341_BLUE);
+
+    setRotation(spim,0);
     setCursor(10, 10);
     writeText(spim,"LCD READY",sizeof("LCD READY"),3);
-        
+    setRotation(spim,1);
+    setCursor(10, 10);
+    writeText(spim,"LCD READY",sizeof("LCD READY"),3);
+    setRotation(spim,2);
+    setCursor(10, 10);
+    writeText(spim,"LCD READY",sizeof("LCD READY"),3);        
+    setRotation(spim,3);
+    setCursor(10, 10);
+    writeText(spim,"LCD READY",sizeof("LCD READY"),3);
+
+            
     DBG_PRINT("LCD Config done...\n"); 
 }
 

@@ -76,11 +76,9 @@
 ** ****************************/
 // ============================
 
-#define DISPLAY     ON_PC    
+#define DISPLAY     ON_LCD    
 
 // ============================
-
-
 
     
 #define PIC_TARGET_WIDTH    (((640/2)/4)*4)    
@@ -101,6 +99,12 @@
 #define EN_HDR          false
     // If true, High Dynamic Range operation is enabled
     // !!! HDR Mode Settings may need some tuning (also according to expected scene characteristics)
+    
+#define ROW_FLIP        true   
+    // option to apply a symmetry wrt central horizontal axis (= Top-Bottom Mirroring)
+#define COLUMN_FLIP     false   
+    // option to apply a symmetry wrt central vertical axis (= Left-Right Mirroring)   
+    
     
 #define PIC_TARGET_SIZE    (PIC_TARGET_WIDTH * PIC_TARGET_HEIGHT)
 #if PIC_TARGET_SIZE>(128*1024)
@@ -222,7 +226,9 @@ int main()
     GAPOC_MT9V034_Cfg.TargetWidth = PIC_TARGET_WIDTH;   // (PIC_TARGET_WIDTH/4)*4;  // to force a multiple of 4
     GAPOC_MT9V034_Cfg.TargetHeight = PIC_TARGET_HEIGHT; // (PIC_TARGET_HEIGHT/4)*4;    
     GAPOC_MT9V034_Cfg.Rescale_CroppingOnly = RESCALE_CROPPING_ONLY;   // For small pic sizes, no binning gives more cropping => smaller FOV
-    GAPOC_MT9V034_Cfg.En_HDR = EN_HDR;    
+    GAPOC_MT9V034_Cfg.En_HDR = EN_HDR;   
+    GAPOC_MT9V034_Cfg.Row_Flip = ROW_FLIP;     
+    GAPOC_MT9V034_Cfg.Column_Flip = COLUMN_FLIP;     
     GAPOC_MT9V034_Cfg.En_Autotest = EN_AUTOTEST;    
     GAPOC_MT9V034_Cfg.En_Row_Noise_Cancel =false;
     GAPOC_MT9V034_Cfg.En_Exposure_LED =true;

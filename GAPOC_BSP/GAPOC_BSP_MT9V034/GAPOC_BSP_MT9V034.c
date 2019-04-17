@@ -200,6 +200,12 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
         DBG_PRINT("HDR enable done\n");  
     }
     
+    
+    // Prepare Mask related to Colum/Row flipping for next operation (Configure Image Format)
+    uint16_t ColRow_Flip_Bits = ( (GAPOC_MT9V034_Cfg.Row_Flip <<MT9V034_READ_MODE_ROW_FLIP_SHIFT) | (GAPOC_MT9V034_Cfg.Column_Flip <<MT9V034_READ_MODE_COLUMN_FLIP_SHIFT) );
+
+    
+    // Configure Image Format Binning, Cropping, Flipping...)
     if ( (!GAPOC_MT9V034_Cfg.Rescale_CroppingOnly) && (GAPOC_MT9V034_Cfg.TargetWidth <=MT9V034_WINDOW_WIDTH_MAX/2) && (GAPOC_MT9V034_Cfg.TargetHeight <=MT9V034_WINDOW_HEIGHT_MAX/2) )
     {
 
@@ -213,7 +219,7 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
             GAPOC_MT9V034_WriteReg16(MT9V034_READ_MODE_A, 
               (MT9V034_READ_MODE_ROW_BIN_MASK & (0x2<<MT9V034_READ_MODE_ROW_BIN_SHIFT))  // row downsampling x4
             | (MT9V034_READ_MODE_COLUMN_BIN_MASK & (0x2<< MT9V034_READ_MODE_COLUMN_BIN_SHIFT))  // column downsampling x4
-            |   MT9V034_READ_MODE_RESERVED  ); // keep reseved bits to required value      
+            | ColRow_Flip_Bits  |   MT9V034_READ_MODE_RESERVED  ); // keep reseved bits to required value      
             
             // !!! In binning mode, MT9V034 appears to provide pixels with difft timing -- requiring clock inversion !!
             GAPOC_MT9V034_WriteReg16( MT9V034_PIXEL_CLOCK, MT9V034_PIXEL_CLOCK_INV_PXL_CLK);
@@ -232,7 +238,7 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
             GAPOC_MT9V034_WriteReg16(MT9V034_READ_MODE_A, 
               (MT9V034_READ_MODE_ROW_BIN_MASK & (0x1<<MT9V034_READ_MODE_ROW_BIN_SHIFT)) // row downsampling x2
             | (MT9V034_READ_MODE_COLUMN_BIN_MASK & (0x1<<MT9V034_READ_MODE_COLUMN_BIN_SHIFT))  // column downsampling x2
-            |  MT9V034_READ_MODE_RESERVED  ); // keep reseved bits to required value    
+            | ColRow_Flip_Bits  |  MT9V034_READ_MODE_RESERVED  ); // keep reseved bits to required value    
             
             // !!! In binning mode, MT9V034 appears to provide pixels with difft timing -- requiring clock inversion !!
              GAPOC_MT9V034_WriteReg16( MT9V034_PIXEL_CLOCK, MT9V034_PIXEL_CLOCK_INV_PXL_CLK);
@@ -252,7 +258,7 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
         GAPOC_MT9V034_WriteReg16(MT9V034_READ_MODE_A, 
            (MT9V034_READ_MODE_ROW_BIN_MASK & (0x0<< MT9V034_READ_MODE_ROW_BIN_SHIFT)) // no row downsampling 
          | (MT9V034_READ_MODE_COLUMN_BIN_MASK & (0x0<<MT9V034_READ_MODE_COLUMN_BIN_SHIFT)) // no column downsampling 
-         |  MT9V034_READ_MODE_RESERVED  ); // keep reseved bits to required value    
+         | ColRow_Flip_Bits  |  MT9V034_READ_MODE_RESERVED  ); // keep reseved bits to required value    
 
     }
   
@@ -307,7 +313,7 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
         }     
     }
          
-  
+   
     // Optional non-linear compression of brighter zones at ADC level   
     if (GAPOC_MT9V034_Cfg.En_ADC_NonLinear_Companding)
     {
