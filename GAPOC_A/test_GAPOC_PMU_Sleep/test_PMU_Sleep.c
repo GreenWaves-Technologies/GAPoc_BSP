@@ -38,7 +38,7 @@
 #define DEEP 2
 
 // ===   USER CHOICES  ==============================================
-#define  SLEEP_MODE     DEEP   // either DEEP or RETENTIVE
+#define  SLEEP_MODE     RETENTIVE   // either DEEP or RETENTIVE
 #define  USE_PADSLEEP   false   // set to true or false
 // ===================================================================
 

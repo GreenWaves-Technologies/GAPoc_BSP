@@ -47,26 +47,27 @@ int main()
 
     // -- Init SPI to interface with LCD  ----------------
     
-    spi_t*   spim = {0};    
+    spi_t   spim;     
     
     /* SPI pins init, SPI udma channel init */
-    spi_init(spim, SPI1_MOSI, SPI1_MISO, SPI1_SCLK, SPI1_CSN0_A5);
+    spi_init(&spim, SPI1_MOSI, SPI1_MISO, SPI1_SCLK, SPI1_CSN0_A5);
        // on GAP_B3_CONN, GAP_A4_CONN, GAP_B4_CONN, GAP_A5_CONN
 
+
     /* SPI Nbits, Mode (cpha, cpol),Slave/nMaster */
-    spi_format(spim, 8, 0, 0);
+    spi_format(&spim, 8, 0, 0);
 
     /* Set SPI fequency */
-    #define SPI_FQCY_MHz  5
-    spi_frequency(spim, SPI_FQCY_MHz*1000000);
+    #define SPI_FQCY_MHz  4
+    spi_frequency(&spim, SPI_FQCY_MHz*1000000);
 
     printf("SPI Config done...\n"); 
 
 
     // -- Configure LCD  --------------------------------
     
-    ILI9341_begin(spim);
-    setRotation(spim,1);
+    ILI9341_begin(&spim);
+    setRotation(&spim,1);
 
     printf("LCD Config done...\n"); 
     
@@ -112,17 +113,17 @@ int main()
     {
         for (uint8_t i=0; i<19; i++)
         {
-            writeFillRect(spim, 0,0,lcdW,lcdH,ILI9341_WHITE);
+            writeFillRect(&spim, 0,0,lcdW,lcdH,ILI9341_WHITE);
         
             setTextColor(Palette[i]);
             setCursor(i*10,0);
-            writeText(spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),1);
-            writeText(spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),2);
-            writeText(spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),3);
+            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),1);
+            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),2);
+            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),3);
 
             wait(1);
             
-            GAPOC_LCD_pushPixels(spim, 0, 0, lcdW,lcdH, Test_Pattern_rgb565);
+            GAPOC_LCD_pushPixels(&spim, 0, 0, lcdW,lcdH, Test_Pattern_rgb565);
             wait(1);
         }
     }

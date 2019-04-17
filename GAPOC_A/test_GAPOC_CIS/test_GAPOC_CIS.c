@@ -39,13 +39,20 @@
 // obtained gain, exposure and black level settings), taking a dummy picture to validate those
 // settings (required by MT9V034), taking the actual picture and switching back off the CIS.
 // Then the image captured can be processed by some algorithm.
-// Between these bursts of activity GAP8 could be put in sleep mode.
+// Between these bursts of activity GAP8 should be put in sleep mode.
+// TODO: sleep mode is not implemented yet.
+
+// NOTE: This example assumes that scene brightness reamins fairly constant so it's OK
+// to compute required Exposure/Gain at power up and not change it. In some real-life
+// scenarios it may be required to periodically re-adjust gain/exposure
+
 
 // In this example, the captured image can either be dispalyed on an Adafruit 2.9" LCD Display
 // or be transfered through the JTAG bridge to a host PC in .ppm format for exploitation on the PC.
 
 // Informative messages can be turned on or off by appropriate setting of symbol GAPOC_DEBUG in GAPOC_BSP_Platform_Defs.h
 // They should be off if trying to save power as, when present, they extend the time during which the camera is powered.
+
 
 **/
 
@@ -59,17 +66,20 @@
 #define ON_LCD  0
 #define ON_PC   1    
 
-
-
 /** ****************************
-// Select here if you want the pictures to be displayed on an Adafruit LCD attached to GAPOC
+// Select below if you want the pictures to be displayed on an Adafruit LCD attached to GAPOC
 // (select ON_LCD) or to be saved as .ppm on PC (select ON_PC) -- in this case you must have JTAG connected 
+//
+// *** WARNING ***
+// Currently the bridge to PC for .ppm file transfer is very slow -- be patient to store 1 pic
+//  This should improve in the future
 ** ****************************/
-// ===========================
+// ============================
 
 #define DISPLAY     ON_PC    
 
-// ===========================
+// ============================
+
 
 
     
@@ -194,8 +204,8 @@ int main()
     
 
 #if (DISPLAY == ON_LCD)
-    spi_t*   spim = {0};   
-    GAPOC_LCD_Init(spim);   // configures SPI1 for LCD & displays welcome message
+    spi_t   spim ;   
+    GAPOC_LCD_Init(&spim);   // configures SPI1 for LCD & displays welcome message
 #endif
 
 
@@ -277,7 +287,6 @@ while(1)
         //redundant if going to deep sleep with mandatory reboot at end of while "loop" (loop executed only once in that case!)   
     GAPOC_MT9V034_uDMA_Config( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
 
-         
     // (Re-)Start MT9V034 chip   
     DBG_PRINT("\nCIS restarting\n");              
     if ( GAPOC_MT9V034_Start(&GAPOC_MT9V034_Cfg) != 0 )
@@ -285,13 +294,13 @@ while(1)
         DBG_PRINT("Error - didn't start\n");
         return (-1);
     }
-   
+
 
 
     // ++++ TRY THIS  ++++++++++++++++++++++
     // In HDR mode, option to increase exposure time ot get good low light details, given than brigth areas will be compressed
-    #define AEC_MULT_FACTOR_IN_HDR  1   
-    #define AGC_MULT_FACTOR_IN_HDR  1   
+    #define AEC_MULT_FACTOR_IN_HDR  1   // no effect if set to 1
+    #define AGC_MULT_FACTOR_IN_HDR  1   // no effect if set to 1  
     #define MAX_AEC_HDR             480
     #define MAX_AGC_HDR             64
     
@@ -340,6 +349,7 @@ while(1)
     // or (simpler) just to a blocking Single Shot (consumption delta due to core << CIS consumption, anyway) ??
     Picture_Index--;
 
+    /*
     DBG_PRINT("\nAfter useful picture taken\n");   
     DBG_PRINT("AEC Reg. = %d\n",(int)GAPOC_MT9V034_ReadReg16(MT9V034_AEC_OUTPUT));
     DBG_PRINT("Exposure Stored = %d\n",(int)AEC_Latest_Value);
@@ -347,12 +357,12 @@ while(1)
     DBG_PRINT("Gain Stored = %d\n",(int)AGC_Latest_Value);
     DBG_PRINT("Black Reg= %d\n",  (int)((int8_t)(0x00FF&GAPOC_MT9V034_ReadReg16(MT9V034_BLACK_LEVEL_VALUE_A))) );
     DBG_PRINT("Black Stored = %d\n",(int)(int8_t)(0x00FF&Black_Latest_Value));   
-    
-        
+    */
+
+
     // Now picture has been shot and stored in memory by uDMA :  power off CIS ASAP (CPI i/f already stopped in callback ISR)
     GAPOC_MT9V034_Off();
     DBG_PRINT("CIS now OFF\n");              
-    
 
    
    
@@ -371,8 +381,8 @@ while(1)
 #if (DISPLAY == ON_LCD)   
 
     gray8_to_RGB565(image_buffer, image_buffer_rgb565, GAPOC_MT9V034_Cfg.TargetWidth , GAPOC_MT9V034_Cfg.TargetHeight);
-//    lcd_pushPixels(spim, 0, 0, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, image_buffer_rgb565);
-    GAPOC_LCD_pushPixels(spim, 0, 0, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, image_buffer_rgb565);
+
+    GAPOC_LCD_pushPixels(&spim, 0, 0, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, image_buffer_rgb565);
 
     #define TIME_BETWEEN_PICS_ms  500
     wait((float)TIME_BETWEEN_PICS_ms/1000);

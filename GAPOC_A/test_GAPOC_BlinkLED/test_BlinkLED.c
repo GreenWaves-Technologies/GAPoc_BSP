@@ -68,20 +68,21 @@ int main()
 {
 
     DBG_PRINT("\nGAPOC LED Blink Test\n\n");
+
     DBG_PRINT("\n\n** DIP Switch position #6 must be closed (ON) to enable the on-board LED **\n");
     DBG_PRINT("and pin xx of Connector3 also bears the GPIO signal that controls the LED\n\n");    
-
       
     //  Initalize Board (GPIO direction and default level, supplies, etc.)       
     GAPOC_BSP_Board_Init();
 
     // Initialize HyperBus I/Os to limit consumption from Memory
     // Ultimately this should go into GAPOC_BSP_Board_Init();
+
     hyperbus_t hyperbus0;
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);
-                      
+                     
 
     // Initialize relevant GPIO as pure output, starting @high logic level
     GAPOC_GPIO_Init_Pure_Output_High( GAPOC_HEARTBEAT_LED );

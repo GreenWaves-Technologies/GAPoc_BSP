@@ -20,7 +20,6 @@
 
 // ==  Custom Types  ==============================================================
 
-//typedef enum  _PullEn {NOPULL=0, PULL=1}  GAPOC_PullEn_t;
 
 
 // ==  Defines    =================================================================
@@ -43,7 +42,7 @@
 
 // --  MT9V034 CIS RELATED      -----------------------------
 
-// Frequency of CIS pixel clock
+// Frequency of CIS pixel clock (keep @27MHz if using on-board ClkGen)
 #define CIS_PIXCLK_FREQ_KHz         27000    
 
 // Frequency of I2C to MT9V034 CIS

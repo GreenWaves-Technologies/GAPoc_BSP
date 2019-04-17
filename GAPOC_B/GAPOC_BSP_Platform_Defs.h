@@ -3,7 +3,7 @@
 /**  ****************************************************
 //
 // This is a set of useful definitions pertaining to:
-//                   GAPOC A
+//                   GAPOC B
 //
 ********************************************************/ 
 
@@ -35,9 +35,9 @@
 #define VOLTAGE_mV  1200
 
 // Select if HyperMem (and therefore 1V8 supply) should stay enabled (if set to 1) or not (if 0) after init 
-#define GAPOC_START_HYPERBUS_1V8    1
+#define GAPOC_START_HYPERBUS_1V8    0
 // Select if 3V_1V_MEMCORE_MEMIO suplying HyperMem should be enabled or not during sleep 
-#define GAPOC_APPLY_HYPERBUS_1V8_IN_SLEEP    1
+#define GAPOC_APPLY_HYPERBUS_1V8_IN_SLEEP    0
 
 
 // --  Thermal Imaging Proxy Related      -----------------------------

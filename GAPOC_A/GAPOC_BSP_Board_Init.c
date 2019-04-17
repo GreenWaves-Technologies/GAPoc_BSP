@@ -135,11 +135,12 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
 // TODO -- May need to use a #define to restrict this to platforms using HyperBus -- some other platforms may work w/o ext memory
 //          or use QSPI Flash/RAM rather than Hyperbus..
     // Set HyperMem interface (move to general init) :
+/*
     hyperbus_t hyperbus0;
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);
-
+*/
 
  // TODO - TBD - Also initalize other non-GPIO pins here ?
  // e.g.may make sense to output NINA module in sleep mode

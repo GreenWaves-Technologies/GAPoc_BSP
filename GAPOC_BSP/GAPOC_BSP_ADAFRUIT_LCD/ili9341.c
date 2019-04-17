@@ -214,7 +214,7 @@ void ILI9341_begin(spi_t* spim)
 
     _width  = ILI9341_TFTWIDTH;
     _height = ILI9341_TFTHEIGHT;
-    
+
 }
 
 

@@ -33,6 +33,11 @@
 // This code is an example of basic MT9V034 camera usage to demonstrate CPI.
 // MT9V034 is configured in AUTOTEST mode (generates test pattern) with cropping to QVGA
 
+// Pictures (test pattern) are stored on PC using transfers over the JTAG bridge.
+// *** WARNING ***
+// Currently the bridge to PC for .ppm file transfer is very slow -- be patient to store 1 pic
+//  This should improve in the future
+
 **/
 
 
@@ -43,8 +48,8 @@
 // ==  Handy "defines" for application, used locally   =====================
 
     
-#define PIC_WIDTH    (((640/2)/4)*4)    
-#define PIC_HEIGHT   (((480/2)/4)*4) 
+#define PIC_WIDTH   (((640/2)/4)*4)    
+#define PIC_HEIGHT  (((480/2)/4)*4) 
     // Must be multiple of 4
      
 #define PIC_SIZE    (PIC_WIDTH * PIC_HEIGHT)
@@ -89,7 +94,8 @@ static cpi_config_t cpi_config;
 static cpi_transfer_t cpiTransfer;  
 static cpi_handle_t hCPI;  
 
-
+// for DBG
+spi_t   spim1;      
 
 // ==== Application's Function Prototypes    ===================================
     
@@ -123,7 +129,8 @@ int main()
     GAPOC_BSP_Board_Init();
     
     
-// !!!! TODO -- If enabling HyperBus interface, non-blocking transactiosn fail ??? (no callback) !!??!!
+    // !! If enabling HyperBus interface, UART Rx no more functional
+    // (this init redundant? already done in GAPOC_BSP_Board_Init() ?)
     hyperbus_t hyperbus0;
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
@@ -168,7 +175,6 @@ int main()
     cpiTransfer.configFlags = UDMA_CFG_DATA_SIZE(1); //0 -> 8bit //1 -> 16bit //2 -> 32bit -- ALWAYS USE 16-bits for CPI uDMA (?)
     DBG_PRINT("CPI uDMA configured\n");  
         // Will be used by CPI Reception function (blocking or non-blocking)
-        
               
     // -- Start MT9V034 chip :              ----------------------------------------------------------------------
 
@@ -284,8 +290,8 @@ int main()
             
     //  ===   MAIN LOOP    =================================================================================================       
 
-
-    for (uint8_t i=0; i<4; i++)
+    #define NUM_PICTURES    2
+    for (uint8_t i=0; i<NUM_PICTURES; i++)
     {
         
         // -- Enable capture by camera (non-blocking)
@@ -306,7 +312,7 @@ int main()
     
     }       
 
-
+    DBG_PRINT("\nDone, disconnecting bridge\n");
     BRIDGE_Disconnect(NULL);
 
 

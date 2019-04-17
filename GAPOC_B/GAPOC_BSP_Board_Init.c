@@ -77,7 +77,7 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
         // !! BEWARE !! GAPB3 can also be bear GPIO1 but in this implementation GPIO1 is already used on pin GAP_B2 
         // !!  ==> risk of conflict. DO NOT USE GAP_A4 as GPIO0 here.  
 // DBG:
-    GAPOC_GPIO_Init_JustPull(GPIO_A1_B3); 
+//    GAPOC_GPIO_Init_JustPull(GPIO_A1_B3); 
                 
     // *** GAPMod Pin #3 = LED_G/GPIOGAP_SW1 = GAP_A3 = GPIO0
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A0_A3);      
@@ -103,11 +103,13 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
         
     // *** GAPMod Pin #9 = GPIO_CIS_APWRON / GAP_B40 = GPIO5
     GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A5_B40);           
-      
+
+
+
+/*       
     // *** GAPMod Pin #10 =  GAP_A43 = CPI_PCLK
     GAPOC_AnyPin_Config( A43, NOPULL, uPORT_MuxAlt0 );    //keep default function = CPI 
-    
-/*        
+           
     // *** GAPMod Pin #11 =  GAP_B39 = CPI_D0
     GAPOC_AnyPin_Config( B39, NOPULL, uPORT_MuxAlt0 );   
         
@@ -128,10 +130,10 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
         
     // *** GAPMod Pin #17 =  GAP_A38 = CPI_D7
     GAPOC_AnyPin_Config( A38, NOPULL, uPORT_MuxAlt0 );   
-*/        
+        
     // *** GAPMod Pin #18 =  GAP_A37 = CPI_HSYNC
     GAPOC_AnyPin_Config( A37, NOPULL, uPORT_MuxAlt0 );   
-/*        
+       
     // *** GAPMod Pin #19 =  GAP_A36 = CPI_VSYNC
     GAPOC_AnyPin_Config( A36, NOPULL, uPORT_MuxAlt0 );     //keep default function = CPI
 */
@@ -228,11 +230,12 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     
     // -- HyperBus i/f
     // !! BEWARE:  Bug requires to disable HyperMem to use UART Rx
+ /*
     hyperbus_t hyperbus0;
     hyperbus_init(&hyperbus0, HYPERBUS_DQ0, HYPERBUS_DQ1, HYPERBUS_DQ2, HYPERBUS_DQ3,
                   HYPERBUS_DQ4, HYPERBUS_DQ5, HYPERBUS_DQ6, HYPERBUS_DQ7,
                   HYPERBUS_CLK, HYPERBUS_CLKN, HYPERBUS_RWDS, HYPERBUS_CSN0, HYPERBUS_CSN1);    
-    
+ */  
         
  // TODO - TBD - Also initalize other non-GPIO pins here ?
  // e.g.may make sense to output NINA module in sleep mode
