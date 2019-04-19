@@ -70,13 +70,11 @@ void  GAPOC_LCD_Init(spi_t* spim)
     spi_format(spim, 8, 0, 0);
 
     /* Set SPI fequency */
-    #define SPI_FQCY_MHz  8
-    spi_frequency(spim, SPI_FQCY_MHz*1000000);
+    spi_frequency(spim, GAPOC_LCD_SPI_FQCY_MHz*1000000);
 
     DBG_PRINT("SPI Config done...\n"); 
-
+ 
     ILI9341_begin(spim);
-//    setRotation(spim,1);
 
     writeFillRect(spim, 0, 0, lcdW, lcdH, ILI9341_WHITE);   
         
@@ -94,9 +92,9 @@ void  GAPOC_LCD_Init(spi_t* spim)
     setRotation(spim,3);
     setCursor(10, 10);
     writeText(spim,"LCD READY",sizeof("LCD READY"),3);
-
             
     DBG_PRINT("LCD Config done...\n"); 
+    
 }
 
 

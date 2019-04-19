@@ -51,6 +51,10 @@
 
 // ====  Exported Global Variables  ============================================
 
+cpi_config_t cpi_config;
+cpi_transfer_t cpiTransfer;  
+cpi_handle_t hCPI;  
+
 
 // ====  File-wide Variables  ===================================================
 
@@ -59,11 +63,12 @@ static GAP_L2_DATA uint8_t MTV9V034_ReadVal16[2];  // 2-byte array
 static GAP_L2_DATA uint8_t I2C1_WrData16[3];  // to store target register 8-bit address + 16-bit data
 static GAP_L2_DATA uint8_t I2C1_RegAddr;
 
-// Misc. handles -- don't need to be seen elsewhere ?
-static cpi_config_t cpi_config;
+// Misc. handles -- Moved to "exported" section
+/*
 static cpi_config_t cpi_config;
 static cpi_transfer_t cpiTransfer;  
 static cpi_handle_t hCPI;  
+*/
 
 i2c_t i2c1; 
 
@@ -633,6 +638,21 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
     
     // Note that DVP pins are still of at exit from this function
      
+}
+
+// --------------
+
+/** Function : GAPOC_MT9V034_Enable_Full_Auto 
+    Action : Selects fully automatic exposure control (AEC), gain control (AGC) and black level on MT9V034
+*/
+
+void GAPOC_MT9V034_Enable_Full_Auto( )
+{
+   // -- Enable auto-black :
+    GAPOC_MT9V034_WriteReg16( MT9V034_BLACK_LEVEL_CTRL, MT9V034_BLACK_LEVEL_AUTO); // keeping default value for frame ot avrega over (could be chnaged)
+
+   // -- Enable AEC, AGC :    
+    GAPOC_MT9V034_WriteReg16( MT9V034_AEC_AGC_ENABLE, MT9V034_AEC_ENABLE_A|MT9V034_AGC_ENABLE_A);       
 }
 
 // -------------------------------------------------------

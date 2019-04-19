@@ -52,6 +52,8 @@ void GAPOC_MT9V034_MonitorMode( bool En_nDis, uint16_t* pAGC_Latest_Value, uint1
 
 void GAPOC_MT9V034_Apply_Calibrations( uint16_t AGC_Latest, uint16_t AEC_Latest, uint16_t Black_Latest_Value_u16, GAPOC_MT9V034_Cfg_t* pGAPOC_MT9V034_Cfg );
 
+void GAPOC_MT9V034_Enable_Full_Auto();
+
 void GAPOC_MT9V034_Single_Shot_NonBlock( void(*Callback)() );      //argument is a pointer to a function 'Callback' that takes no parameter and returns nothing
 
 //void GAPOC_MT9V034_Continuous_Frames_NonBlock( void(*Callback)() );
