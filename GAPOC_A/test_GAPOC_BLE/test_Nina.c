@@ -88,18 +88,24 @@ char Resp_String[AT_RESP_ARRAY_LENGTH] ;
     
     // NOTICE:
     // With current silicon there may be problems to use UART Rx (GAP8 receiving) while HyperBus interface is
-    // enabled. To use UART Rx, remove HyperBus initialization done in GAPOC_BSP_Board_Init();
+    // enabled. To use UART Rx, pin B7 (=HYPER_DQ[6] when used as HyperBus I/O) must be configured in its default functionality (Alt.0),
+    // which means HyperBus is not usable at this time.
+    // In other words, usage of HyperBus and UART Rx must be time multiplexed, toggling the functionality of pin B7.
     
     // To limit power consumption from HyperMem without initializing HyperBus interface, 
     // you may pull its nCS low (inactive) by using GPIO mode, e.g. as follows:
     //GAPOC_GPIO_Init_Pure_Output_High(GPIO_A30);  // CSN0 = GPIO30 on B15
     //GAPOC_GPIO_Init_Pure_Output_High(GPIO_A31);  // CSN1 = GPIO31 on A16
 
+    // Bug work-around (see above):
+    // Set pin B7 for default behavior (HyperBus not usable then)
+    GAPOC_AnyPin_Config( B7, NOPULL, uPORT_MuxAlt0 );  // pin GAP_B7 keeps default function = SPIM0_SCK (output)
+
 
     // --  Initialize UART, no pull   -----
     GAPOC_NINA_AT_Uart_Init();
 
- 
+
     // --  Start NINA-B1 BLE module   -----
           
     // Make sure NINA_SW1 is HIGH at BLE Start-up -- GPIO_LED_G/NINA_SW1 = GPIO_A1_B2 on GAPOC
@@ -107,40 +113,17 @@ char Resp_String[AT_RESP_ARRAY_LENGTH] ;
 
     // Init GPIO that will control NINA DSR in deasserted position
     GAPOC_GPIO_Init_Pure_Output_Low(GAPOC_NINA17_DSR);
+
     
     // Enable BLE (release reset)
     GAPOC_GPIO_Set_High(GAPOC_NINA_NRST);  
+
    
-    wait(1); // some waiting needed ??? 
+    wait(1); // some waiting needed after BLE reset... 
  
     // Now release GPIO_LED_G/NINA_SW1 so it can be driven by NINA
     GAPOC_GPIO_Init_HighZ(GPIO_A1_B2);   
 
-/*
-GAPOC_NINA_AT_Send("&D4");          // DSR will control NINA switch off, Logic 1=OFF, Logic 0=ON
-    // BEWARE -- Low-to-High transition will put NINA in deep sleep
-    //            but then need both DSR back Low AND escape sequence ("+++") to switch back on
-wait(0.2);
-GAPOC_GPIO_Init_Pure_Output_High(GAPOC_NINA17_DSR);
-wait(0.2);
-GAPOC_GPIO_Set_Low(GAPOC_NINA17_DSR);
-wait(0.2);
-//GAPOC_GPIO_Set_High(GAPOC_NINA17_DSR);
-wait(0.2);
-GAPOC_GPIO_Set_Low(GAPOC_NINA17_DSR);
-wait(0.2);
-*/
-
-/*
-   // With NINA DSR deasserted, Send escape sequence to make sure we're in command mode
-    wait(0.2); // delay seems required !
-    GAPOC_NINA_AT_Send("&D4");  // to tell NINA it must consider DSR as DeepSleep control pin
-    // Escape sequence is 1sec silence + "+++" + 1sec silence,  taking some margin on silent period seems to help               
-    wait(1.3);
-    static const uint8_t* EscSeq = (uint8_t*)"+++";
-    GAPOC_NINA_Send_ByteArray_Blocking( EscSeq, 3);
-    wait(1.3);
-*/
 
     // Initiliaze NINA as BLE Peripheral
     GAPOC_NINA_AT_Send("E0");                   // Echo OFF    
@@ -153,15 +136,7 @@ wait(0.2);
     //GAPOC_NINA_AT_Send("+UBTLECFG=1,480");      // BLE Configuration Param#1 =  Min adv. interval = 480x625ns
     //GAPOC_NINA_AT_Send("+UBTLECFG=2,640");      // BLE Configuration Param#2 =  Max adv. interval = 640x625ns
 
-    // Make sure DSR input is Deasserted (logic 1)
-//    GAPOC_GPIO_Init_Pure_Output_High(GPIO_A21);       //Init and set relevant GPIO:  GPIO_NINA17 = GAP_B13 = GPIO_A21
-    
-    // Define DTR line (DSR NINA input pin) behaviour as enabling radio shut-off or complete shut-off
-    //GAPOC_NINA_AT_Send("&D4");                   // AT&D4 for complete shut off, AT&D1 for radio shut-off thru DSR pin
-/*   
-    GAPOC_NINA_AT_Send("&W");                   // Commit current configuration as default
-    GAPOC_NINA_AT_Send("+CPWROFF");             // Reboot NINA
-*/
+ 
     DBG_PRINT("AT Config Done\n");
              
     // After Reboot of NINA,  central connects to NINA and NINA will provide
@@ -178,28 +153,36 @@ wait(0.2);
     DBG_PRINT("Data Mode Entered!\n");
 
 
-
-wait(1); // leave some time for Central to be properly configured 
+    wait(1); // leave some time for Central to be properly configured 
+     
+     
      
     // ***************************************************************************
     // SPS Service on NINA module seems to work unrilably in duplex mode  ???
     // --> Stick to unidirectional usage
-#define SPS_TX_NRX  1     // set to 1 to select SPS transmission, 0 for reception
+#define SPS_TX_NRX  1    // set to 1 to select SPS transmission, 0 for reception
     // ***************************************************************************
     
 
-#if SPS_TX_NRX==0     // Reception selected             
+#if SPS_TX_NRX==0               
+    // If (simplex) Reception Mode selected,  
+    // Prepare for reception of xx bytes from UART (<< BLE) at any time
     GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);   
 #endif
+    // ----------------------------------------------------------            
+ 
             
-    // xx Brief flashes of LED every xxsec
+
     #define LED_OFF_DURATION_sec  0.2   
     #define NB_ITERATIONS  10  
+    #define DELAY_BETWEEN_ITERATIONs_MS     1000
     uint8_t j =0;
+    
     while(1) 
-//    for (uint8_t k=0; k<NB_ITERATIONS; k++)
+    // for (uint8_t k=0; k<NB_ITERATIONS; k++)
     {
-                   
+         
+        // --    Briefly flash Green LED .....  --------------         
         GAPOC_GPIO_Set_High(GAPOC_HEARTBEAT_LED);
         wait(0.1); 
         
@@ -207,24 +190,31 @@ wait(1); // leave some time for Central to be properly configured
         wait(LED_OFF_DURATION_sec);    //was 1.9
         
         
+        // --    ...and then....                --------------         
+        
 #if   SPS_TX_NRX==1     // Transmission
+
+        // --    If (simplex) Transmission Mode selected,  ---- 
+        // --    send xx bytes over UART (>> BLE) now      ----
         for (uint8_t i=0; i<sizeof(Tx_Array); i++)
         {
             Tx_Array[i]=j++%10;
         }            
         GAPOC_NINA_Send_ByteArray_Blocking( Tx_Array, sizeof(Tx_Array) );
             
-#elif SPS_TX_NRX==0     // Reception             
-                
+#elif SPS_TX_NRX==0     // Reception      
+       
+        // --    If (simplex) Reception Mode selected,      ---- 
+        // --    display xx bytes when received from UART (<< BLE)               
         if (RxData_Rcvd)
         {
-
             for (uint8_t j=0; j<BLE_RXDATA_NUM_BYTES; j++)
             {
                 putchar(RxData[j]+0x30);
             }
             putchar('\n');
-            
+          
+            // Relaunch reception of xx bytes :
             RxData_Rcvd = false;           
             GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);   
         }         
@@ -233,22 +223,10 @@ wait(1); // leave some time for Central to be properly configured
   #error "SPS_TX_NRX not properly set"
 #endif
 
-wait (1);
+
+        wait (DELAY_BETWEEN_ITERATIONs_MS/1000.0);
 
     }
-
-/*
-    // Put NINA in sleep mode --> asssert (drive low) pin 17 (UART_DSR input) of NINA
-    DBG_PRINT("NINA goes to sleep... or rather should ?!??\n");
-    // (GAPOC_NINA17_DSR initially is ..low)
-    GAPOC_GPIO_Set_High( GAPOC_NINA17_DSR );  // NINA to go to Deep Sleep
-wait(0.2);
-    GAPOC_GPIO_Set_Low( GAPOC_NINA17_DSR );  // NINA to go to Deep Sleep
-wait(0.2);
-//    GAPOC_GPIO_Set_High( GAPOC_NINA17_DSR );  // NINA to go to Deep Sleep
-            
-    while(1);
-*/
      
     return 0; 
  
@@ -261,8 +239,6 @@ wait(0.2);
 static void Callback_RxData()
 {
     RxData_Rcvd = true;
-//    putchar('X');   
-//    putchar('\n');   
 }
 
 

@@ -47,10 +47,11 @@ serial_t hUart;
     serial_init(&hUart, UART_TX, UART_RX);  // TX on pin A7, RX on B6 -- default config has pull-ups
     GAPOC_AnyPin_Config(UART_TX, NOPULL, uPORT_MuxAlt0);  // Remove pull-up on UART_TX
     GAPOC_AnyPin_Config(UART_RX, NOPULL, uPORT_MuxAlt0);  // Remove pull-up on UART_TX
-    
+
     serial_format(&hUart, 8, 0, 1); // Update format -- 8 bits, No parity, 1 Stop bit for NINA
 
     serial_baud(&hUart, NINA_UART_AT_BAUDRATE_bps);   // Update baudrate for NINA
+
 }
  
 // -----------------------------------------------------

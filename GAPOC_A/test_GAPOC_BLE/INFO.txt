@@ -11,8 +11,9 @@ This example does the following :
   
 - This is repeated a number of times with the on-board green "heartbeat" LED flashing (if DIP switch position 6 is closed, to enable heartbeat LED)
 
-- Then GAP8 puts Nina in deep sleep using pin DSR and stops 
-  <*** deep sleep entry on Nina using pin DSR doesn't work OK yet ***>
+- <TODO>
+   Then GAP8 puts Nina in deep sleep using pin DSR and stops 
+    <*** wasn't able yet to get Nina to enter Deep Sleep using pin DSR ***>
 
 ----  
 NOTICE:

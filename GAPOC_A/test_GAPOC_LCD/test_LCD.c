@@ -42,31 +42,31 @@
 int main()
 {
 
-    printf("Starting test...\n");
+    DBG_PRINT("Starting LCD test...\n");
+    DBG_PRINT("LCD Width = %d, LCD Height = %d\n", lcdW, lcdH);
 
 
     // -- Init SPI to interface with LCD  ----------------
+ 
+    spi_t  spim;
     
-    spi_t   spim;     
-    
-    /* SPI pins init, SPI udma channel init */
+    // SPI pins init, SPI udma channel init
     spi_init(&spim, SPI1_MOSI, SPI1_MISO, SPI1_SCLK, SPI1_CSN0_A5);
        // on GAP_B3_CONN, GAP_A4_CONN, GAP_B4_CONN, GAP_A5_CONN
 
 
-    /* SPI Nbits, Mode (cpha, cpol),Slave/nMaster */
+    // SPI Nbits, Mode (cpha, cpol),Slave/nMaster 
     spi_format(&spim, 8, 0, 0);
 
-    /* Set SPI fequency */
-    #define SPI_FQCY_MHz  4
-    spi_frequency(&spim, SPI_FQCY_MHz*1000000);
+    // Set SPI fequency 
+    spi_frequency(&spim, GAPOC_LCD_SPI_FQCY_MHz*1000000);
 
     printf("SPI Config done...\n"); 
 
 
     // -- Configure LCD  --------------------------------
     
-    ILI9341_begin(&spim);
+    ILI9341_begin(&spim);  
     setRotation(&spim,1);
 
     printf("LCD Config done...\n"); 
@@ -101,24 +101,25 @@ int main()
     {
         for (uint32_t j=0; j<lcdW; j++)
         {
-            Test_Pattern_gray8[i*lcdW +j] = j%256; 
+            Test_Pattern_gray8[i*lcdW +j] = i; 
         }
     }
     gray8_to_RGB565(Test_Pattern_gray8, Test_Pattern_rgb565, lcdW , lcdH);
 
 
     // -- Display stuff   ----------------------------------
-    
+    uint8_t i =0;    
     while(1)
     {
-        for (uint8_t i=0; i<19; i++)
         {
             writeFillRect(&spim, 0,0,lcdW,lcdH,ILI9341_WHITE);
         
-            setTextColor(Palette[i]);
-            setCursor(i*10,0);
-            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),1);
+            setTextColor(Palette[i++]);
+            setCursor(10,20);  // (X,Y) of bottom left of text frame
+            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),1);  // smallest text --> comes out always black ?
+            setCursor(10,60);
             writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),2);
+            setCursor(10,160);
             writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),3);
 
             wait(1);

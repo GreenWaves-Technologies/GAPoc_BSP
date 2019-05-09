@@ -24,6 +24,13 @@
 
 // ==  Defines    =================================================================
 
+
+#define GAPOC_A 0xA0
+#define GAPOC_B 0xB0
+#define GAPOC_PLATFORM    GAPOC_A
+
+
+
 // --  GENERAL ---------------------------------------------
 
 // Set to 1 to enable debug features (DBG_PRINT() etc.), else to 0

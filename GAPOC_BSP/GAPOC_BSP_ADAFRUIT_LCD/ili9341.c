@@ -63,8 +63,13 @@ void  GAPOC_LCD_Init(spi_t* spim)
 {
     
     /* SPI pins init, SPI udma channel init */
-    spi_init(spim, SPI1_MOSI, SPI1_MISO, SPI1_SCLK, SPI1_CSN0_A5);
-       // on GAP_B3_CONN, GAP_A4_CONN, GAP_B4_CONN, GAP_A5_CONN
+    #if (GAPOC_PLATFORM == GAPOC_B)
+        #define  LCD_SPI_CSN   SPI1_CSN1_B2
+    #else
+        #define  LCD_SPI_CSN   SPI1_CSN0_A5
+    #endif
+    spi_init(spim, SPI1_MOSI, SPI1_MISO, SPI1_SCLK, LCD_SPI_CSN);   // signals available on CONN3
+      
 
     /* SPI Nbits, Mode (cpha, cpol),Slave/nMaster */
     spi_format(spim, 8, 0, 0);
@@ -76,8 +81,9 @@ void  GAPOC_LCD_Init(spi_t* spim)
  
     ILI9341_begin(spim);
 
-    writeFillRect(spim, 0, 0, lcdW, lcdH, ILI9341_WHITE);   
-        
+//    writeFillRect(spim, 0, 0, lcdW, lcdH, ILI9341_WHITE);   
+      writeFillRect(spim, 0, 0, lcdH, lcdW, ILI9341_WHITE);   
+            
     setTextColor(ILI9341_BLUE);
 
     setRotation(spim,0);
@@ -101,9 +107,13 @@ void  GAPOC_LCD_Init(spi_t* spim)
 
 void ILI9341_begin(spi_t* spim)
 {
-    // Use GAP_A3_CONN as D/C
+    // Define D/C (data/control) pin for LCD shield
+#if ( GAPOC_PLATFORM == GAPOC_B )
+    #define TFT_SPI_DC  GPIO_A19      // GPIO_A19 on pin B12 of GAP
+#else
     #define TFT_SPI_DC  GPIO_A0_A3      // GPIO_A0 on pin A3 of GAP
-    GAPOC_GPIO_Init_Pure_Output_High(GPIO_A0_A3);
+#endif
+    GAPOC_GPIO_Init_Pure_Output_High(TFT_SPI_DC);
      
     //startWrite();
     writeCommand(spim,0xEF);
