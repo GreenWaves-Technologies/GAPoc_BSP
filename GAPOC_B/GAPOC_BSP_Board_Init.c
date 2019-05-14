@@ -99,14 +99,12 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
 #endif
 
     // *** GAPMod Pin #8 = GPIO_CIS_DPWRON / GAP_D1 = GPIO16
-    GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A16);           
+    GAPOC_GPIO_Init_Pure_Output_Low(GPIO_CIS_DPWRON);           // Digital Power OFF
         
     // *** GAPMod Pin #9 = GPIO_CIS_APWRON / GAP_B40 = GPIO5
-    GAPOC_GPIO_Init_Pure_Output_Low(GPIO_A5_B40);           
+    GAPOC_GPIO_Init_Pure_Output_Low(GPIO_CIS_APWRON);       // Analog Power OFF         
 
-
-
-/*       
+       
     // *** GAPMod Pin #10 =  GAP_A43 = CPI_PCLK
     GAPOC_AnyPin_Config( A43, NOPULL, uPORT_MuxAlt0 );    //keep default function = CPI 
            
@@ -136,7 +134,7 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
        
     // *** GAPMod Pin #19 =  GAP_A36 = CPI_VSYNC
     GAPOC_AnyPin_Config( A36, NOPULL, uPORT_MuxAlt0 );     //keep default function = CPI
-*/
+
         
     // *** GAPMod Pin #20 = GND   
     // *** GAPMod Pin #20bis = GAP_VREGOUT (analog)   
