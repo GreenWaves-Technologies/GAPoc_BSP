@@ -1,3 +1,8 @@
-#.gitignore list
+# .gitignore
+.gitignore
 
-version.log
+# emacs files
+*~
+
+# vim files
+.*.swp

@@ -27,7 +27,12 @@ D13 SPI_SCK
 #include "font.c"
 
 #include "spi_multi_api.h"
+#ifdef __FREERTOS__
+#include "FreeRTOSConfig.h"
+#define wait(x) vTaskDelay(x)
+#else
 #include "mbed_wait_api.h"
+#endif
 
 
 
