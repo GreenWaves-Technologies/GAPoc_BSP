@@ -111,7 +111,8 @@ int main()
     uint8_t i =0;    
     while(1)
     {
-        {
+printf("b/o loop...\n"); 
+            {
             writeFillRect(&spim, 0,0,lcdW,lcdH,ILI9341_WHITE);
         
             setTextColor(Palette[i++]);
@@ -127,6 +128,7 @@ int main()
             GAPOC_LCD_pushPixels(&spim, 0, 0, lcdW,lcdH, Test_Pattern_rgb565);
             wait(1);
         }
+printf("END loop...\n"); 
     }
     
     printf("end of the test\n");  // Never reached !

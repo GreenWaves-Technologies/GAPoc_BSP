@@ -58,10 +58,9 @@ PORT_Type *const port_addrs[] = PORT_BASE_PTRS;
     
     DBG_PRINT("Frequency = %d Hz, Voltage = %d mv\n", (int)FLL_GetFrequency(uFLL_SOC), (int)voltage_mV);
     
-
+    
     // -- GAPMod Pins  -------------------------
-    
-    
+     
     // NB:  GPIO_xx_yy refers to GPIO #xx available on physical pin #yy of GAP8 
     // !!! #yy is omitted if only 1 physical pin matches  !!!
     

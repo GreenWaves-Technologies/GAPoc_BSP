@@ -66,13 +66,15 @@
   #define GPIO_CIS_APWRON             GPIO_A5_B40     // GPIO5 on physical pin B40 of GAP8
   #define GPIO_CIS_TRIGGER            GPIO_A3_B1
   #define GPIO_CIS_LED_ENB            GPIO_A17        // GPIO A17 on physical pin B11 of GAP8
-  
+
+/*  
   #define GPIO_CIS_CLK                GPIO_A15   // GPIO_A15 = GAP_B34, used either as enable of clkgen for CIS clock or as PWM source driving CIS clock (assy option)
-                                                   // This was oiginal intent in GAPOB B 0.1, but GAP8 cut1.0/1.1 has a bug that causes Vsync to be stuck if using B34 as GPIO
-/*
-  #define GPIO_CIS_CLK_ENB            GPIO_A0_A4      //...so on B0.2 reworked version, pin StdBy of ClkGen now driven from GAP_A4 = GPIO_A0               
-                                      // *** CAUTION  GPIO0 also available on GAP_A3 and used as LED_G/GPIOGAP_SW1                        
 */
+// !!! The above was the original intention -  However GAP8 cut1.0/1.1 has a bug that causes Vsync to be stuck if using B34 as GPIO.
+//     ...so on fixed B0.2 (PCB with manual rework), pin StdBy of ClkGen now driven from GAP_A4 = GPIO_A0 
+  #define GPIO_CIS_CLK_NOTEN            GPIO_A0_A4      //...so on B0.2 reworked version, pin StdBy of ClkGen now driven from GAP_A4 = GPIO_A0               
+                                      // *** CAUTION  GPIO0 also available on GAP_A3 and used as LED_G/GPIOGAP_SW1                        
+
                                           
   #define GAPOC_HEARTBEAT_LED         GPIO_A1_B2      // GAPB2_CONN becomes Heartbeat LED if Pos.6 of DIP switch is closed
   #define GAPOC_NINA_NRST             GPIO_A2_A2      // 

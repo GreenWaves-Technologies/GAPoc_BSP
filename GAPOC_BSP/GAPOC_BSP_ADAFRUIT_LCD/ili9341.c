@@ -49,7 +49,6 @@ D13 SPI_SCK
 GAP_L2_DATA int _width=0; 
 GAP_L2_DATA int _height=0;
 
-
 GAP_L2_DATA int16_t cursor_x=0;
 GAP_L2_DATA int16_t cursor_y=0;
 GAP_L2_DATA int16_t wrap=0;
@@ -73,7 +72,7 @@ void  GAPOC_LCD_Init(spi_t* spim)
 
     /* SPI Nbits, Mode (cpha, cpol),Slave/nMaster */
     spi_format(spim, 8, 0, 0);
-
+    
     /* Set SPI fequency */
     spi_frequency(spim, GAPOC_LCD_SPI_FQCY_MHz*1000000);
 
@@ -102,7 +101,6 @@ void  GAPOC_LCD_Init(spi_t* spim)
     DBG_PRINT("LCD Config done...\n"); 
     
 }
-
 
 
 void ILI9341_begin(spi_t* spim)
