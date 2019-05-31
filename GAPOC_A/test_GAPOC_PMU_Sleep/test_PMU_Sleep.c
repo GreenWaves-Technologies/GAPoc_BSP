@@ -32,7 +32,12 @@
 #include "GAPOC_BSP_General.h"
 
 #include "hyperbus_api.h"
+#ifdef __FREERTOS__
+#include "FreeRTOS_util.h"
+#define wait(x) vTaskDelay(x)
+#else
 #include "mbed_wait_api.h"
+#endif
 
 #define RETENTIVE  1
 #define DEEP 2

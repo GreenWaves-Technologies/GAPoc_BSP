@@ -31,7 +31,12 @@
  
 #include "GAPOC_BSP_General.h"
 
+#ifdef __FREERTOS__
+#include "FreeRTOS_util.h"
+#define wait(x) vTaskDelay(x)
+#else
 #include "mbed_wait_api.h"
+#endif
 
 #include "GAPOC_BSP_ADAFRUIT_LCD.h"
 
