@@ -42,7 +42,12 @@
 
 #include "hyperbus_api.h"
 
+#ifdef __FREERTOS__
+#include "FreeRTOS_util.h"
+#define wait(x) vTaskDelay(x)
+#else
 #include "mbed_wait_api.h"
+#endif
 
 
 // ====  Application's Custom Types    ========================================

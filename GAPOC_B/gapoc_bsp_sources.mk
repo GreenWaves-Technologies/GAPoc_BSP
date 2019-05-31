@@ -1,8 +1,15 @@
 # Paths to GAPOC BSP include files
+ifeq ($(MBED), 1)
 INC +=  ..
 INC +=  ../../GAPOC_BSP/GAPOC_BSP_GENERAL
 INC +=  ../../GAPOC_BSP/GAPOC_BSP_NINA
 INC +=  ../../GAPOC_BSP/GAPOC_BSP_ADAFRUIT_LCD
+else ifeq ($(FREE), 1)
+INC_PATH +=  ..
+INC_PATH +=  ../../GAPOC_BSP/GAPOC_BSP_GENERAL
+INC_PATH +=  ../../GAPOC_BSP/GAPOC_BSP_NINA
+INC_PATH +=  ../../GAPOC_BSP/GAPOC_BSP_ADAFRUIT_LCD
+endif
 
 # Paths to GAPOC BSP source files
 GAPOC_PLATFORM_C = $(wildcard ../*.c)

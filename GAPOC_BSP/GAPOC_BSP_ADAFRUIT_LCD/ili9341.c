@@ -28,7 +28,7 @@ D13 SPI_SCK
 
 #include "spi_multi_api.h"
 #ifdef __FREERTOS__
-#include "FreeRTOSConfig.h"
+#include "FreeRTOS_util.h"
 #define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"

@@ -101,7 +101,13 @@
 
 #include "GAPOC_BSP_General.h"
 
+#ifdef __FREERTOS__
+#include "FreeRTOS_util.h"
+#include "FreeRTOSConfig.h"
+#define wait(x) vTaskDelay(x)
+#else
 #include "mbed_wait_api.h"
+#endif
 
 
 // ====  Application's Custom Types    ========================================

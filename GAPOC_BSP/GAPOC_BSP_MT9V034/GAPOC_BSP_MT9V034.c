@@ -44,7 +44,7 @@
 #include "GAPOC_BSP_MT9V034.h"
 
 #ifdef __FREERTOS__
-#include "FreeRTOSConfig.h"
+#include "FreeRTOS_util.h"
 #define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
