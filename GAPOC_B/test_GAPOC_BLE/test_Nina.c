@@ -67,12 +67,16 @@ volatile bool RxData_Rcvd = false;
 GAP_L2_DATA  uint8_t RxData[BLE_RXDATA_NUM_BYTES];    
 GAP_L2_DATA  uint8_t Tx_Array[BLE_TXDATA_NUM_BYTES] ={0};
 
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
 
 
 // ==== Application's Function Prototypes    ===================================
 
 static void Callback_RxData();
 
+void vTestBLE(void *parameters);
 
 
 // #############################################################################
@@ -80,10 +84,36 @@ static void Callback_RxData();
 
 int main()
 {
+    printf("\nBLE TEST !\n");
+
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestBLE, "TestBLE", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
 
 
-GPIO_Type *const gpio_addrs[] = GPIO_BASE_PTRS;
-char Resp_String[AT_RESP_ARRAY_LENGTH] ;
+void vTestBLE(void *parameters)
+{
+    GPIO_Type *const gpio_addrs[] = GPIO_BASE_PTRS;
+    char Resp_String[AT_RESP_ARRAY_LENGTH] ;
 
 
     DBG_PRINT("GAP Nina test\n");
@@ -233,7 +263,8 @@ char Resp_String[AT_RESP_ARRAY_LENGTH] ;
 
     }
      
-    return 0; 
+    //return 0;
+    vTaskSuspend(NULL);
  
 }
 

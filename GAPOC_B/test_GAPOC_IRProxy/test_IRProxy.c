@@ -134,6 +134,10 @@ GAP_L2_DATA   spi_t   spim1;
 GAP_L2_DATA  uint16_t  spi_word16;
         
       
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
+
 // ==== Application's Function Prototypes    ===================================
 
 
@@ -147,13 +151,41 @@ static void Callback_Single_Shot();
 static void save_pict_ppm( unsigned char* pic_buffer);
 
 
+void vTestIRProxy(void *parameters);
 
 // #############################################################################
 // ##### MAIN APPLICATION  ###########################################
 
 int main()
 {
+    printf("\nIRProxy TEST !\n");
 
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestIRProxy, "TestIRProxy", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
+
+
+void vTestIRProxy(void *parameters)
+{
     DBG_PRINT("\nBasic Test of Proxy with ULIS IR Sensor on DF12 Connector CONN8\n\n");
     
     DBG_PRINT("Through your #define DISPLAY, you have selected to ");
@@ -373,7 +405,8 @@ int main()
     BRIDGE_Disconnect(NULL);
 
 
-    return (0);    
+    //return (0);
+    vTaskSuspend(NULL);
 }
 
 

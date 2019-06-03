@@ -59,19 +59,47 @@
 
 
 // ==== Application's own global variables  ====================================
-// <none>
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
 
 
 // ==== Application's Function Prototypes    ===================================
-// <none>
-
+void vTestBlinkLED(void *parameters);
 
 // #############################################################################
 // ##### MAIN APPLICATION  ###########################################
 
 int main()
 {
+    printf("\nBlink LED TEST !\n");
 
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestBlinkLED, "TestBlinkLED", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
+
+
+void vTestBlinkLED(void *parameters)
+{
     DBG_PRINT("\nGAPOC LED Blink Test\n\n");
     DBG_PRINT("\n\n** DIP Switch position #6 must be closed (ON) to enable the on-board LED **\n");
     DBG_PRINT("and Pin #2 of Connector3 then bears the GPIO signal (from GAP8 pin B2) that controls the LED\n\n");    
@@ -114,7 +142,8 @@ int main()
         GAPOC_GPIO_Toggle( GAPOC_HEARTBEAT_LED );        
 
     }
-    
+
+    vTaskSuspend(NULL);
 }
 // ## END OF FILE ##############################################################################
 

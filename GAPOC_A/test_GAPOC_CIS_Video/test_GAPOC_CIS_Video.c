@@ -138,6 +138,10 @@ static volatile uint32_t Picture_Index = 0;  // to manage non-blocking picture t
 GAP_L2_DATA static  GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg;
  
 
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
+
 
 // ==== Externally declared variables       ====================================
  
@@ -153,14 +157,43 @@ extern cpi_handle_t hCPI;               // declared and used in GAPOC_BSP_MT9V03
 static void Callback_Video_Frame();   
 
 
+void vTestCIS(void *parameters);
+
 
 // #############################################################################
 // ##### MAIN APPLICATION  ###########################################
 
 int main()
 {
+    printf("\nCIS TEST !\n");
 
-CPI_Type *const cpi_address[] = CPI_BASE_PTRS;
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestCIS, "TestCIS", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
+
+
+void vTestCIS(void *parameters)
+{
+    CPI_Type *const cpi_address[] = CPI_BASE_PTRS;
 
 
     DBG_PRINT("\nGAPOC CIS test in Video under mbed\n");
@@ -222,7 +255,8 @@ CPI_Type *const cpi_address[] = CPI_BASE_PTRS;
     if ( GAPOC_MT9V034_Start(&GAPOC_MT9V034_Cfg) != 0 ) 
     {
         DBG_PRINT("Error - didn't start\n");
-        return (-1);
+        //return (-1);
+        vTaskSuspend(NULL);
     }
 
             
@@ -295,7 +329,8 @@ CPI_Type *const cpi_address[] = CPI_BASE_PTRS;
     }  // end while(1)     
 
 
-    return 0;    
+   //return 0;
+   vTaskSuspend(NULL);
 }
 
 

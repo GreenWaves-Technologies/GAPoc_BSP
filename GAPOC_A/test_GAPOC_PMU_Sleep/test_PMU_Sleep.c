@@ -189,6 +189,15 @@
 GAP_L2_DATA static int retentive_counter = 0;  // GAP_L2_DATA directive needed for variable to survive retentive sleep mode (tbc)
 
 
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
+
+
+void vTestSleep(void *parameters);
+
+
+
 static void pmu_wakeup_by_rtc()
 {
    int repeat_en = 0;  
@@ -212,7 +221,34 @@ static void pmu_wakeup_by_rtc()
 
 int main()
 {
+    printf("\nSleep TEST !\n");
 
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestSleep, "TestSleep", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
+
+
+void vTestSleep(void *parameters)
+{
     PORTA->PAD_SLEEP = 0x00; // restore normal pad behaviour if coming back from sleep (NEEDED ???)
         
     // Initalize Board (GPIO direction and default level, supplies, etc.)
@@ -340,7 +376,8 @@ int main()
 
     }
 
-return 0;
+    //return 0;
+    vTaskSuspend(NULL);
 
 
 }

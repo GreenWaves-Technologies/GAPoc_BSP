@@ -165,6 +165,10 @@ GAP_L2_DATA static  GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg;
   static uint32_t imgNum = 0;
 #endif
 
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
+
 
 // ==== Application's Function Prototypes    ===================================
 
@@ -174,14 +178,43 @@ ROI_Struct_t    Identify_Image_ROI( uint8_t* image_buffer, uint32_t Picture_Widt
 static void Callback_Single_Shot();   // MAy need a __WEAK function declaration somewhere
 
 
+void vTestCIS(void *parameters);
+
 
 // #############################################################################
 // ##### MAIN APPLICATION  ###########################################
 
 int main()
 {
+    printf("\nCIS TEST !\n");
 
-    DBG_PRINT("\nGAPOC CIS test under mbed\n");
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestCIS, "TestCIS", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
+
+
+void vTestCIS(void *parameters)
+{
+    DBG_PRINT("\nGAPOC CIS test\n");
 
 #if (DISPLAY == ON_PC)  
     DBG_PRINT("(see #define DISPLAY =>) Outputting pictures as .ppm files\n");
@@ -265,7 +298,8 @@ int main()
         if ( GAPOC_MT9V034_Start(&GAPOC_MT9V034_Cfg) != 0 )
         {
             DBG_PRINT("Error - didn't start\n");
-            return (-1);
+            //return (-1);
+            vTaskSuspend(NULL);
         }
 
         // Even if HDR was selected, perform iniital calibration with HDR mode off at CIS level
@@ -286,117 +320,118 @@ int main()
     //  ===   MAIN LOOP    =================================================================================================       
 
 
-// This while(1) should disappear when we're going to sleep after picture snapshot with wake-up from RTC enabled
-while(1)
-{
+    // This while(1) should disappear when we're going to sleep after picture snapshot with wake-up from RTC enabled
+    while(1)
+    {
         
-    // Set-up GAP8 CPI interface [CPI registers did not survive low-power mode]
-    GAPOC_MT9V034_CPI_Setup(&GAPOC_MT9V034_Cfg);
+        // Set-up GAP8 CPI interface [CPI registers did not survive low-power mode]
+        GAPOC_MT9V034_CPI_Setup(&GAPOC_MT9V034_Cfg);
         //redundant if going to deep sleep with mandatory reboot at end of while "loop" (executed only once in that case!) -- already done in prologue before while()
 
-    // Set-up uDMA for getting data from CPI  [uDMA registers did not survive low-power mode]
+        // Set-up uDMA for getting data from CPI  [uDMA registers did not survive low-power mode]
         //redundant if going to deep sleep with mandatory reboot at end of while "loop" (loop executed only once in that case!)   
-    GAPOC_MT9V034_uDMA_Config( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
+        GAPOC_MT9V034_uDMA_Config( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth*GAPOC_MT9V034_Cfg.TargetHeight );
 
-    // (Re-)Start MT9V034 chip   
-    DBG_PRINT("\nCIS restarting\n");              
-    if ( GAPOC_MT9V034_Start(&GAPOC_MT9V034_Cfg) != 0 )
-    {
-        DBG_PRINT("Error - didn't start\n");
-        return (-1);
-    }
+        // (Re-)Start MT9V034 chip   
+        DBG_PRINT("\nCIS restarting\n");              
+        if ( GAPOC_MT9V034_Start(&GAPOC_MT9V034_Cfg) != 0 )
+        {
+            DBG_PRINT("Error - didn't start\n");
+            //return (-1);
+            vTaskSuspend(NULL);
+        }
 
 
 
-    // ++++ TRY THIS  ++++++++++++++++++++++
-    // In HDR mode, option to increase exposure time ot get good low light details, given than brigth areas will be compressed
-    #define AEC_MULT_FACTOR_IN_HDR  1   // no effect if set to 1
-    #define AGC_MULT_FACTOR_IN_HDR  1   // no effect if set to 1  
-    #define MAX_AEC_HDR             480
-    #define MAX_AGC_HDR             64
+        // ++++ TRY THIS  ++++++++++++++++++++++
+        // In HDR mode, option to increase exposure time ot get good low light details, given than brigth areas will be compressed
+#define AEC_MULT_FACTOR_IN_HDR  1   // no effect if set to 1
+#define AGC_MULT_FACTOR_IN_HDR  1   // no effect if set to 1  
+#define MAX_AEC_HDR             480
+#define MAX_AGC_HDR             64
     
     
-    if (GAPOC_MT9V034_Cfg.En_HDR)
-    {       // TODO - move this inside Apply_Calibrations()
+        if (GAPOC_MT9V034_Cfg.En_HDR)
+        {       // TODO - move this inside Apply_Calibrations()
 
-        uint16_t  AEC_Latest_Value_HDR = AEC_Latest_Value * AEC_MULT_FACTOR_IN_HDR; 
-        uint16_t  AGC_Latest_Value_HDR = AGC_Latest_Value * AGC_MULT_FACTOR_IN_HDR; 
-        if (AEC_Latest_Value_HDR >MAX_AEC_HDR)
-        {
-            AEC_Latest_Value_HDR = MAX_AEC_HDR;
-        }           
-        if (AGC_Latest_Value_HDR >MAX_AGC_HDR)
-        {
-            AGC_Latest_Value_HDR = MAX_AGC_HDR;
-        }     
-        GAPOC_MT9V034_Apply_Calibrations( AGC_Latest_Value_HDR, AEC_Latest_Value_HDR, Black_Latest_Value, &GAPOC_MT9V034_Cfg );    
+            uint16_t  AEC_Latest_Value_HDR = AEC_Latest_Value * AEC_MULT_FACTOR_IN_HDR; 
+            uint16_t  AGC_Latest_Value_HDR = AGC_Latest_Value * AGC_MULT_FACTOR_IN_HDR; 
+            if (AEC_Latest_Value_HDR >MAX_AEC_HDR)
+            {
+                AEC_Latest_Value_HDR = MAX_AEC_HDR;
+            }           
+            if (AGC_Latest_Value_HDR >MAX_AGC_HDR)
+            {
+                AGC_Latest_Value_HDR = MAX_AGC_HDR;
+            }     
+            GAPOC_MT9V034_Apply_Calibrations( AGC_Latest_Value_HDR, AEC_Latest_Value_HDR, Black_Latest_Value, &GAPOC_MT9V034_Cfg );    
                               
-        // Compensate fact that in HDR digital range is typically larger than ADC input range
-        // Several methods, see DS and AN  -- Try this one:
-        // GAPOC_MT9V034_WriteReg16( MT9V034_VREF_ADC, MT9V034_VREF_2V1);                    
-        GAPOC_MT9V034_WriteReg16( MT9V034_ANALOG_GAIN_A, AGC_Latest_Value_HDR|MT9V034_ANALOG_GAIN_GLOBAL );                    
+            // Compensate fact that in HDR digital range is typically larger than ADC input range
+            // Several methods, see DS and AN  -- Try this one:
+            // GAPOC_MT9V034_WriteReg16( MT9V034_VREF_ADC, MT9V034_VREF_2V1);                    
+            GAPOC_MT9V034_WriteReg16( MT9V034_ANALOG_GAIN_A, AGC_Latest_Value_HDR|MT9V034_ANALOG_GAIN_GLOBAL );                    
 
-    }
-    else
-    // ++++ +++++++++++++++++++++
+        }
+        else
+            // ++++ +++++++++++++++++++++
     
-    // Recall previous results of Black Level, AGC, AEC 
-    GAPOC_MT9V034_Apply_Calibrations( AGC_Latest_Value, AEC_Latest_Value, Black_Latest_Value, &GAPOC_MT9V034_Cfg );
+            // Recall previous results of Black Level, AGC, AEC 
+            GAPOC_MT9V034_Apply_Calibrations( AGC_Latest_Value, AEC_Latest_Value, Black_Latest_Value, &GAPOC_MT9V034_Cfg );
         // would it make sense to keep AGC and AEC and only force black level ? always or from time to time...
         // Anyway otherwise: how to keep track of evolution of lighting conditions/scene illumination
         // IF AEC and AGC are computed during frame N and applied udring N+1, better do this -- still 2 exposures needed anyway !
 
 
-    // Shoot picture !    
-    GAPOC_MT9V034_Single_Shot_NonBlock( Callback_Single_Shot );
+        // Shoot picture !    
+        GAPOC_MT9V034_Single_Shot_NonBlock( Callback_Single_Shot );
 
-     // NB: Above fn sets GPIO_CIS_EXP high and enables CPI interface
-     //  Bringing GPIO_CIS_EXP back low and de-initing CPI is taken care of in callback function
+        // NB: Above fn sets GPIO_CIS_EXP high and enables CPI interface
+        //  Bringing GPIO_CIS_EXP back low and de-initing CPI is taken care of in callback function
     
-    do
-    {
-    //TODO - Go to sleep until callback IT arrives ?
-    } while (Picture_Index ==0);
-    // or (simpler) just to a blocking Single Shot (consumption delta due to core << CIS consumption, anyway) ??
-    Picture_Index--;
+        do
+        {
+            //TODO - Go to sleep until callback IT arrives ?
+        } while (Picture_Index ==0);
+        // or (simpler) just to a blocking Single Shot (consumption delta due to core << CIS consumption, anyway) ??
+        Picture_Index--;
 
-    /*
-    DBG_PRINT("\nAfter useful picture taken\n");   
-    DBG_PRINT("AEC Reg. = %d\n",(int)GAPOC_MT9V034_ReadReg16(MT9V034_AEC_OUTPUT));
-    DBG_PRINT("Exposure Stored = %d\n",(int)AEC_Latest_Value);
-    DBG_PRINT("AGC Reg= %d\n",(int)GAPOC_MT9V034_ReadReg16(MT9V034_AGC_OUTPUT));
-    DBG_PRINT("Gain Stored = %d\n",(int)AGC_Latest_Value);
-    DBG_PRINT("Black Reg= %d\n",  (int)((int8_t)(0x00FF&GAPOC_MT9V034_ReadReg16(MT9V034_BLACK_LEVEL_VALUE_A))) );
-    DBG_PRINT("Black Stored = %d\n",(int)(int8_t)(0x00FF&Black_Latest_Value));   
-    */
+        /*
+          DBG_PRINT("\nAfter useful picture taken\n");   
+          DBG_PRINT("AEC Reg. = %d\n",(int)GAPOC_MT9V034_ReadReg16(MT9V034_AEC_OUTPUT));
+          DBG_PRINT("Exposure Stored = %d\n",(int)AEC_Latest_Value);
+          DBG_PRINT("AGC Reg= %d\n",(int)GAPOC_MT9V034_ReadReg16(MT9V034_AGC_OUTPUT));
+          DBG_PRINT("Gain Stored = %d\n",(int)AGC_Latest_Value);
+          DBG_PRINT("Black Reg= %d\n",  (int)((int8_t)(0x00FF&GAPOC_MT9V034_ReadReg16(MT9V034_BLACK_LEVEL_VALUE_A))) );
+          DBG_PRINT("Black Stored = %d\n",(int)(int8_t)(0x00FF&Black_Latest_Value));   
+        */
 
 
-    // Now picture has been shot and stored in memory by uDMA :  power off CIS ASAP (CPI i/f already stopped in callback ISR)
-    GAPOC_MT9V034_Off();
-    DBG_PRINT("CIS now OFF\n");              
+        // Now picture has been shot and stored in memory by uDMA :  power off CIS ASAP (CPI i/f already stopped in callback ISR)
+        GAPOC_MT9V034_Off();
+        DBG_PRINT("CIS now OFF\n");              
 
    
    
-    // --- Launch Processing  (dummmy in this example)  ---------------------------------------------------------    
-    // - Pass pointer to frame buffer + picture size
-    // - Get back # of ROI and ROI coordinates (X-Y top left + X-Y bottom right)
+        // --- Launch Processing  (dummmy in this example)  ---------------------------------------------------------    
+        // - Pass pointer to frame buffer + picture size
+        // - Get back # of ROI and ROI coordinates (X-Y top left + X-Y bottom right)
     
-    ROI_Struct_t ROI_Struct = Identify_Image_ROI( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight );
-    // This is just an example / placeholder
-    // Here we get back a dummy ROI -- and do nothing with it...
+        ROI_Struct_t ROI_Struct = Identify_Image_ROI( image_buffer, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight );
+        // This is just an example / placeholder
+        // Here we get back a dummy ROI -- and do nothing with it...
     
     
-    // -- Display Picture      -----------------------------------------------------------------------------------    
+        // -- Display Picture      -----------------------------------------------------------------------------------    
 
 
 #if (DISPLAY == ON_LCD)   
 
-    gray8_to_RGB565(image_buffer, image_buffer_rgb565, GAPOC_MT9V034_Cfg.TargetWidth , GAPOC_MT9V034_Cfg.TargetHeight);
+        gray8_to_RGB565(image_buffer, image_buffer_rgb565, GAPOC_MT9V034_Cfg.TargetWidth , GAPOC_MT9V034_Cfg.TargetHeight);
 
-    GAPOC_LCD_pushPixels(&spim, 0, 0, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, image_buffer_rgb565);
+        GAPOC_LCD_pushPixels(&spim, 0, 0, GAPOC_MT9V034_Cfg.TargetWidth, GAPOC_MT9V034_Cfg.TargetHeight, image_buffer_rgb565);
 
-    #define TIME_BETWEEN_PICS_ms  500
-    wait((float)TIME_BETWEEN_PICS_ms/1000);
+#define TIME_BETWEEN_PICS_ms  500
+        wait((float)TIME_BETWEEN_PICS_ms/1000);
     
 #else  // Display  on PC 
 
@@ -408,22 +443,23 @@ while(1)
 
 
 
-/*    
-    // TODO: go to [retentive] deep sleep 
-    // -- will start again at beginning of program if RTC elapses or selected GPIOIRQ fires
-    // (but may need to enforce latency if PIR-triggered )   
-    PMU_StateSwitch(uPMU_SWITCH_RETENTIVE_SLEEP, uPMU_SWITCH_FAST);
+        /*    
+          // TODO: go to [retentive] deep sleep 
+          // -- will start again at beginning of program if RTC elapses or selected GPIOIRQ fires
+          // (but may need to enforce latency if PIR-triggered )   
+          PMU_StateSwitch(uPMU_SWITCH_RETENTIVE_SLEEP, uPMU_SWITCH_FAST);
 
-*/        
+        */        
 
     
-}  // end of temporary while(1)     
+    }  // end of temporary while(1)     
 
 #if (DISPLAY == ON_PC)   
     BRIDGE_Disconnect(NULL);
 #endif
 
-    return 0;    
+    //return 0;
+    vTaskSuspend(NULL);
 }
 
 

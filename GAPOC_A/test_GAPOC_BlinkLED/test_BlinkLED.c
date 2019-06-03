@@ -59,22 +59,20 @@
 
 
 // ==== Application's own global variables  ====================================
-// <none>
+/* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
 
 
 // ==== Application's Function Prototypes    ===================================
-// <none>
 void vTestBlinkLED(void *parameters);
-uint8_t taskSuspended;
 
 // #############################################################################
 // ##### MAIN APPLICATION  ###########################################
 
 int main()
 {
-
-    DBG_PRINT("\nGAPOC LED Blink Test\n\n");
+    printf("n\Blink LED TEST !\n");
 
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
@@ -99,8 +97,10 @@ int main()
     return 0;
 }
 
+
 void vTestBlinkLED(void *parameters)
 {
+    DBG_PRINT("\nGAPOC LED Blink Test\n\n");
     DBG_PRINT("\n\n** DIP Switch position #6 must be closed (ON) to enable the on-board LED **\n");
     DBG_PRINT("and pin xx of Connector3 also bears the GPIO signal that controls the LED\n\n");    
       
