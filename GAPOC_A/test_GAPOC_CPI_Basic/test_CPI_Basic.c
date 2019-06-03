@@ -102,11 +102,17 @@ static cpi_handle_t hCPI;
 // for DBG
 spi_t   spim1;      
 
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
+
 // ==== Application's Function Prototypes    ===================================
     
 // Local helper functions
 static void Callback_Single_Shot();   // MAy need a __WEAK function declaration somewhere
 static void save_pict_ppm( unsigned char* pic_buffer);
+
+void vTestCPI(void *parameters);
 
 
 // #############################################################################
@@ -114,8 +120,34 @@ static void save_pict_ppm( unsigned char* pic_buffer);
 
 int main()
 {
+    printf("\nCPI TEST !\n");
 
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
 
+    xTask = xTaskCreate( vTestCPI, "TestCPI", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+
+}
+
+void vTestCPI(void *parameters)
+{
     DBG_PRINT("\nGAPOC basic CPI test\n");
 
     // This is to be able to use debug bridge to sace .ppm picture on host PC
@@ -204,7 +236,8 @@ int main()
     if (ChipId_Reg != MT9V034_CHIP_ID)
     {
         DBG_PRINT("Error - Unexpected I2C device address from CIS\n");
-        return -1;     
+        //return -1;
+        vTaskSuspend(NULL);
     }
     else 
     {
@@ -320,8 +353,7 @@ int main()
     DBG_PRINT("\nDone, disconnecting bridge\n");
     BRIDGE_Disconnect(NULL);
 
-
-    return 0;    
+    vTaskSuspend(NULL);
 }
 
 

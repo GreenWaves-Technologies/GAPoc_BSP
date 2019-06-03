@@ -43,10 +43,41 @@
 #define lcdW    320
 #define lcdH    240
 
+void vTestLCD(void *parameters);
+
+/* Utilities to control tasks. */
+TaskHandle_t tasks[NBTASKS];
+uint8_t taskSuspended;
 
 int main()
 {
+    printf("\nLCD TEST !\n");
 
+    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
+    BaseType_t xTask;
+    TaskHandle_t xHandler0 = NULL;
+
+    xTask = xTaskCreate( vTestLCD, "TestLCD", configMINIMAL_STACK_SIZE * 2,
+                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
+    if( xTask != pdPASS )
+    {
+        printf("TestBridge is NULL !\n");
+        exit(0);
+    }
+    #endif //configSUPPORT_DYNAMIC_ALLOCATION
+
+    tasks[0] = xHandler0;
+
+    /* Start the kernel.  From here on, only tasks and interrupts will run. */
+    printf("\nScheduler starts !\n");
+    vTaskStartScheduler();
+
+    /* Exit FreeRTOS */
+    return 0;
+}
+
+void vTestLCD(void *parameters)
+{
     DBG_PRINT("Starting LCD test...\n");
     DBG_PRINT("LCD Width = %d, LCD Height = %d\n", lcdW, lcdH);
 
@@ -136,4 +167,5 @@ int main()
     
     printf("end of the test\n");  // Never reached !
 
+    vTaskSuspend(NULL);
 }
