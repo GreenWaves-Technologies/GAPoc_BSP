@@ -6,3 +6,12 @@
 
 # vim files
 .*.swp
+
+# obj files
+*.o
+
+# pictures
+*.ppm
+
+# logs
+*.log

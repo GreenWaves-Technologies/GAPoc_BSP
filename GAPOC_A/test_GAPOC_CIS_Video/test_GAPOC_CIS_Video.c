@@ -110,7 +110,6 @@
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -138,9 +137,11 @@ static volatile uint32_t Picture_Index = 0;  // to manage non-blocking picture t
 GAP_L2_DATA static  GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg;
  
 
+#ifdef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
+#endif
 
 
 // ==== Externally declared variables       ====================================
@@ -167,6 +168,7 @@ int main()
 {
     printf("\nCIS TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -188,6 +190,10 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
+    #else
+    vTestCIS(NULL);
+    return 0;
+    #endif
 }
 
 
@@ -255,8 +261,11 @@ void vTestCIS(void *parameters)
     if ( GAPOC_MT9V034_Start(&GAPOC_MT9V034_Cfg) != 0 ) 
     {
         DBG_PRINT("Error - didn't start\n");
-        //return (-1);
+        #ifdef __FREERTOS__
         vTaskSuspend(NULL);
+        #else
+        return (-1);
+        #endif
     }
 
             
@@ -321,7 +330,11 @@ void vTestCIS(void *parameters)
 
 /*
         #define TIME_BETWEEN_PICS_ms  500
+        #ifdef __FREERTOS__
+        vTaskDelay( TIME_BETWEEN_PICS_ms / portTICK_PERIOD_MS );
+        #else
         wait((float)TIME_BETWEEN_PICS_ms/1000);
+        #endif
 */
 
 
@@ -329,8 +342,9 @@ void vTestCIS(void *parameters)
     }  // end while(1)     
 
 
-   //return 0;
+   #ifdef __FREERTOS__
    vTaskSuspend(NULL);
+   #endif
 }
 
 

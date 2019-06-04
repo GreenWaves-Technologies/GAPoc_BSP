@@ -71,7 +71,6 @@
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -102,9 +101,11 @@ static cpi_handle_t hCPI;
 // for DBG
 spi_t   spim1;      
 
+#ifdef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
+#endif
 
 // ==== Application's Function Prototypes    ===================================
     
@@ -122,6 +123,7 @@ int main()
 {
     printf("\nCPI TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -143,7 +145,10 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
-
+    #else
+    vTestCPI(NULL);
+    return 0;
+    #endif
 }
 
 void vTestCPI(void *parameters)
@@ -221,7 +226,11 @@ void vTestCPI(void *parameters)
     GAPOC_GPIO_Set_High( GPIO_CIS_PWRON );
 
     #define SUPPLY_SETTLING_TIME_ms 10
+    #ifdef __FREERTOS__
+    vTaskDelay( SUPPLY_SETTLING_TIME_ms / portTICK_PERIOD_MS );
+    #else
     wait ((float)SUPPLY_SETTLING_TIME_ms/1000.0);
+    #endif
 
 
     // Wait for chip ready
@@ -236,8 +245,11 @@ void vTestCPI(void *parameters)
     if (ChipId_Reg != MT9V034_CHIP_ID)
     {
         DBG_PRINT("Error - Unexpected I2C device address from CIS\n");
-        //return -1;
+        #ifdef __FREERTOS__
         vTaskSuspend(NULL);
+        #else
+        return -1;
+        #endif
     }
     else 
     {
@@ -353,7 +365,9 @@ void vTestCPI(void *parameters)
     DBG_PRINT("\nDone, disconnecting bridge\n");
     BRIDGE_Disconnect(NULL);
 
+    #ifdef __FREERTOS__
     vTaskSuspend(NULL);
+    #endif
 }
 
 

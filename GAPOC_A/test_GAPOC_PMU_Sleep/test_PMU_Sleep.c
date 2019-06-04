@@ -34,7 +34,6 @@
 #include "hyperbus_api.h"
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -189,9 +188,11 @@
 GAP_L2_DATA static int retentive_counter = 0;  // GAP_L2_DATA directive needed for variable to survive retentive sleep mode (tbc)
 
 
+#ifdef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
+#endif
 
 
 void vTestSleep(void *parameters);
@@ -223,6 +224,7 @@ int main()
 {
     printf("\nSleep TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -244,6 +246,9 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
+    #else
+    vTestSleep(NULL);
+    #endif
 }
 
 
@@ -272,8 +277,12 @@ void vTestSleep(void *parameters)
                 
 
         DBG_PRINT("Going to sleep, retentive_counter=%d \n", (int)retentive_counter); 
-        
-        wait(NODEEPSLEEP_DURATION_sec);         
+
+        #ifdef __FREERTOS__
+        vTaskDelay( NODEEPSLEEP_DURATION_sec * 1000 / portTICK_PERIOD_MS ); // Delay in ms(1 tick/ms).
+        #else
+        wait(NODEEPSLEEP_DURATION_sec);
+        #endif
         GAPOC_GPIO_Set_Low(GAPOC_HEARTBEAT_LED);
 
 //        pmu_wakeup_by_rtc();      
@@ -332,10 +341,18 @@ void vTestSleep(void *parameters)
         {
 
             GAPOC_GPIO_Set_High(GAPOC_HEARTBEAT_LED);
+            #ifdef __FREERTOS__
+            vTaskDelay( 100 / portTICK_PERIOD_MS );
+            #else
             wait(0.1); //sec.
+            #endif
         
             GAPOC_GPIO_Set_Low(GAPOC_HEARTBEAT_LED);
+            #ifdef __FREERTOS__
+            vTaskDelay( LED_OFFTIME_NOM_ms / portTICK_PERIOD_MS );
+            #else
             wait(LED_OFFTIME_NOM_ms/1000.0);  // slower blink rate at each iteration
+            #endif
         }
 
         // Relaunch RTC
@@ -345,7 +362,11 @@ void vTestSleep(void *parameters)
         RTC_Deinit(RTC_APB);
 
 
+        #ifdef __FREERTOS__
+        vTaskDelay( 100 / portTICK_PERIOD_MS );
+        #else
         wait(0.1); //TMP
+        #endif
         
 
          // Then relaunch RTC wake-up counter:
@@ -376,8 +397,8 @@ void vTestSleep(void *parameters)
 
     }
 
-    //return 0;
+    #ifdef __FREERTOS__
     vTaskSuspend(NULL);
-
+    #endif
 
 }

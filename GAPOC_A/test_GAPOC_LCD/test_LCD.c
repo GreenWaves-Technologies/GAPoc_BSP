@@ -33,7 +33,6 @@
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -43,16 +42,19 @@
 #define lcdW    320
 #define lcdH    240
 
-void vTestLCD(void *parameters);
-
+#ifdef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
+#endif
+
+void vTestLCD(void *parameters);
 
 int main()
 {
     printf("\nLCD TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -74,6 +76,10 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
+    #else
+    vTestLCD(NULL);
+    return 0;
+    #endif
 }
 
 void vTestLCD(void *parameters)
@@ -158,14 +164,24 @@ void vTestLCD(void *parameters)
             setCursor(10,160);
             writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),3);
 
+            #ifdef __FREERTOS__
+            vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS ); // Delay in ms(1 tick/ms).
+            #else
             wait(1);
+            #endif
             
             GAPOC_LCD_pushPixels(&spim, 0, 0, lcdW,lcdH, Test_Pattern_rgb565);
+            #ifdef __FREERTOS__
+            vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS );
+            #else
             wait(1);
+            #endif
         }
     }
     
     printf("end of the test\n");  // Never reached !
 
+    #ifdef __FREERTOS__
     vTaskSuspend(NULL);
+    #endif
 }

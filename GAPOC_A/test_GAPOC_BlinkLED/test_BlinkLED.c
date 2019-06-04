@@ -44,7 +44,6 @@
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -59,10 +58,11 @@
 
 
 // ==== Application's own global variables  ====================================
+#ifdef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
-
+#endif
 
 // ==== Application's Function Prototypes    ===================================
 void vTestBlinkLED(void *parameters);
@@ -72,8 +72,9 @@ void vTestBlinkLED(void *parameters);
 
 int main()
 {
-    printf("n\Blink LED TEST !\n");
+    printf("\nBlink LED TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -95,6 +96,10 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
+    #else
+    vTestBlinkLED(NULL);
+    return 0;
+    #endif
 }
 
 
@@ -125,15 +130,25 @@ void vTestBlinkLED(void *parameters)
     #define LED_OFF_TIME_ms  850
     while(1)
     {
-        wait( (float)(LED_ON_TIME_ms)/1000.0 );
+        #ifdef __FREERTOS__
+        vTaskDelay( LED_ON_TIME_ms / portTICK_PERIOD_MS );
+        #else
+        wait( (float)(LED_ON_TIME_ms)/1000 );
+        #endif
         GAPOC_GPIO_Toggle( GAPOC_HEARTBEAT_LED );
-        
-        wait( (float)(LED_OFF_TIME_ms)/1000.0 );
+
+        #ifdef __FREERTOS__
+        vTaskDelay( LED_OFF_TIME_ms / portTICK_PERIOD_MS );
+        #else
+        wait( (float)(LED_OFF_TIME_ms)/1000 );
+        #endif
         GAPOC_GPIO_Toggle( GAPOC_HEARTBEAT_LED );        
 
     }
 
+    #ifdef __FREERTOS__
     vTaskSuspend(NULL);
+    #endif
 }
 // ## END OF FILE ##############################################################################
 
