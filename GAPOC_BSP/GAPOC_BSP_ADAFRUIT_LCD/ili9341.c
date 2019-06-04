@@ -29,7 +29,6 @@ D13 SPI_SCK
 #include "spi_multi_api.h"
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -230,11 +229,19 @@ void ILI9341_begin(spi_t* spim)
     writeCommand(spim,ILI9341_SLPOUT);    //Exit Sleep
     
 //    rt_time_wait_us(120000);
+    #ifdef __FREERTOS__
+    vTaskDelay( 120 / portTICK_PERIOD_MS );
+    #else
     wait(0.12); // Mbed style
+    #endif
     
     writeCommand(spim,ILI9341_DISPON);    //Display on
 //    rt_time_wait_us(120000);
-    wait(0.12); // Mbed style    
+    #ifdef __FREERTOS__
+    vTaskDelay( 120 / portTICK_PERIOD_MS );
+    #else
+    wait(0.12); // Mbed style
+    #endif
     
     //endWrite();
 

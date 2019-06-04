@@ -104,7 +104,6 @@
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
 #include "FreeRTOSConfig.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -133,10 +132,12 @@ static GAP_L2_DATA    cpi_handle_t hCPI;
 GAP_L2_DATA   spi_t   spim1;      
 GAP_L2_DATA  uint16_t  spi_word16;
         
-      
+
+#ifdef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
+#endif
 
 // ==== Application's Function Prototypes    ===================================
 
@@ -160,6 +161,7 @@ int main()
 {
     printf("\nIRProxy TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -168,7 +170,7 @@ int main()
                          NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
     if( xTask != pdPASS )
     {
-        printf("TestBridge is NULL !\n");
+        printf("TestIRProxy is NULL !\n");
         exit(0);
     }
     #endif //configSUPPORT_DYNAMIC_ALLOCATION
@@ -181,6 +183,10 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
+    #else
+    vTestIRProxy(NULL);
+    return 0;
+    #endif
 }
 
 
@@ -289,7 +295,11 @@ void vTestIRProxy(void *parameters)
     // --  Master Clock On   --------------------
     // When voltages are established, wait 150ms and apply Master Clock
     #define  MCLOCK_TURNON_LATENCY_ms       150.0
-    wait( (float)(MCLOCK_TURNON_LATENCY_ms)/1000.0);
+     #ifdef __FREERTOS__
+     vTaskDelay( MCLOCK_TURNON_LATENCY_ms / portTICK_PERIOD_MS );
+     #else
+     wait( (float)(MCLOCK_TURNON_LATENCY_ms)/1000.0);
+     #endif
     GAPOC_GPIO_Set_Low( GPIO_CIS_CLK );      // Turn On MCLK (active low control)                                   
         // Note: assuming here this signal controls enable of dedicated ClkGen, not used as clock itself
         //  (board assembly option)
@@ -301,32 +311,61 @@ void vTestIRProxy(void *parameters)
 
 
     #define  IRPROXY_SETTLING_TIME_ms       150.0
-    wait( (float) IRPROXY_SETTLING_TIME_ms/1000.0  );  // else upcoming SPI prog may not be properly taken into account ? (min duration TBC)
+    // else upcoming SPI prog may not be properly taken into account ? (min duration TBC)
+    #ifdef __FREERTOS__
+    vTaskDelay( IRPROXY_SETTLING_TIME_ms / portTICK_PERIOD_MS );
+    #else
+    wait( (float) IRPROXY_SETTLING_TIME_ms/1000.0  );
+    #endif
 
      
     // == Proxy is now ready to be configured through SPI Bus : ====
                    
     // ---  Trigger mode Register  - --- 
     GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_ADDR, IRPROXY_TRIGGER_ADDR_MAGIC_NUM);
-    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);        
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif
     GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_VAL, IRPROXY_TRIGGER_VAL_TRIGMODE_B);    // "FullScale trigger" mode
-    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);                  
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif
 
     // --- Integration Time Register  ---
     GAPOC_IRProxy_WriteReg12( IRPROXY_TINT, 0x010);     // DS says (hardwired) default is 0x10, FullScale suggests 0x20 (or 20dec?)
-    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);    
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif
         
     // --- GFID Register   --------------
     GAPOC_IRProxy_WriteReg12( IRPROXY_GFID, 0x0BB);     // DS says default is 0xBB0, FullScale suggests 0x0BB 
-    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);    
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif
             
     // --- GSK  Register   --------------
     GAPOC_IRProxy_WriteReg12( IRPROXY_GSK, 0x11C);      // DS says default is 0x540,  FullScale suggests 0x11C
-    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);    
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif
            
     // --- GMS  Register   --------------
     GAPOC_IRProxy_WriteReg12( IRPROXY_GMS, 0x053);      // DS says default is 0x053  (FullScale too --> Gain 2, Gain 0, UpCol, UpRow bits)
-    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);    
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif
         
     // --- ClkDiv Register  -------------    (NB: Not taken into account if done as first access ??? TBC)
     // Don't rely on default clkdiv  specified in DS as seen not to match h/w 
@@ -389,7 +428,11 @@ void vTestIRProxy(void *parameters)
     // Power off analog supply and wait 100ms
     GAPOC_GPIO_Set_Low( GPIO_CIS_APWRON );              
     #define  ANA_TO_DIG_POWEROFF_LATENCY_ms 100
+    #ifdef __FREERTOS__
+    vTaskDelay( ANA_TO_DIG_POWEROFF_LATENCY_ms / portTICK_PERIOD_MS );
+    #else
     wait((float)ANA_TO_DIG_POWEROFF_LATENCY_ms/1000.0);
+    #endif
 
     // Power off digital supply 
     GAPOC_GPIO_Set_Low( GPIO_CIS_DPWRON );      
@@ -405,8 +448,9 @@ void vTestIRProxy(void *parameters)
     BRIDGE_Disconnect(NULL);
 
 
-    //return (0);
+    #ifdef __FREERTOS__
     vTaskSuspend(NULL);
+    #endif
 }
 
 

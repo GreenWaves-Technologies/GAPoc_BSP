@@ -45,7 +45,6 @@
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -638,7 +637,12 @@ GAPOC_MT9V034_Cfg_t    GAPOC_MT9V034_Cfg = *pGAPOC_MT9V034_Cfg;
     // Trigger exposure :
     #define  ONE_EXP_DURATION_sec  ( (float)(MT9V034_COARSE_SHUTTER_WIDTH_DEF * TOTAL_ROW_TIME) / (CIS_PIXCLK_FREQ_KHz*1000.0) )  
     GAPOC_GPIO_Set_High(GPIO_CIS_EXP);
-    wait(ONE_EXP_DURATION_sec);            // leave time to CIS to capture 1 dummy frame (could be made shorter in row binning?)
+    // leave time to CIS to capture 1 dummy frame (could be made shorter in row binning?)
+    #ifdef __FREERTOS__
+    vTaskDelay( ONE_EXP_DURATION_sec * 1000 / portTICK_PERIOD_MS ); // Delay in ms.
+    #else
+    wait(ONE_EXP_DURATION_sec);
+    #endif
     GAPOC_GPIO_Set_Low(GPIO_CIS_EXP);
     
     // Note that DVP pins are still of at exit from this function

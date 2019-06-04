@@ -97,7 +97,7 @@ int main()
                          NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
     if( xTask != pdPASS )
     {
-        printf("TestBridge is NULL !\n");
+        printf("TestBLE is NULL !\n");
         exit(0);
     }
     #endif //configSUPPORT_DYNAMIC_ALLOCATION
@@ -162,7 +162,7 @@ void vTestBLE(void *parameters)
 
 
     #ifdef __FREERTOS__
-    vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS ); // Delay in MS(1 tick/ms).
+    vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS ); // Delay in ms.
     #else
     wait(1); // some waiting needed after BLE reset...
     #endif

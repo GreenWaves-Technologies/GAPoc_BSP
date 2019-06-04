@@ -83,7 +83,7 @@ int main()
                          NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
     if( xTask != pdPASS )
     {
-        printf("TestBridge is NULL !\n");
+        printf("TestBlinkLED is NULL !\n");
         exit(0);
     }
     #endif //configSUPPORT_DYNAMIC_ALLOCATION

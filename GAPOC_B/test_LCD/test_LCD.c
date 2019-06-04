@@ -31,89 +31,28 @@
  
 #include "GAPOC_BSP_General.h"
 
-#ifdef __FREERTOS__
-#include "FreeRTOS_util.h"
-#else
 #include "mbed_wait_api.h"
-#endif
 
 #include "GAPOC_BSP_ADAFRUIT_LCD.h"
 
 #define lcdW    320
 #define lcdH    240
 
-#ifdef __FREERTOS__
-/* Utilities to control tasks. */
-TaskHandle_t tasks[NBTASKS];
-uint8_t taskSuspended;
-#endif
-
-void vTestLCD(void *parameters);
 
 int main()
 {
-    printf("\nLCD TEST !\n");
 
-    #ifdef __FREERTOS__
-    #if configSUPPORT_DYNAMIC_ALLOCATION == 1
-    BaseType_t xTask;
-    TaskHandle_t xHandler0 = NULL;
+    printf("Starting test...\n");
 
-    xTask = xTaskCreate( vTestLCD, "TestLCD", configMINIMAL_STACK_SIZE * 2,
-                         NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
-    if( xTask != pdPASS )
-    {
-        printf("TestLCD is NULL !\n");
-        exit(0);
-    }
-    #endif //configSUPPORT_DYNAMIC_ALLOCATION
-
-    tasks[0] = xHandler0;
-
-    /* Start the kernel.  From here on, only tasks and interrupts will run. */
-    printf("\nScheduler starts !\n");
-    vTaskStartScheduler();
-
-    /* Exit FreeRTOS */
-    return 0;
-    #else
-    vTestLCD(NULL);
-    return 0;
-    #endif
-}
-
-void vTestLCD(void *parameters)
-{
-    DBG_PRINT("Starting LCD test...\n");
-    DBG_PRINT("LCD Width = %d, LCD Height = %d\n", lcdW, lcdH);
-
-
-    // -- Init SPI to interface with LCD  ----------------
- 
-    spi_t  spim;
-    
-    // SPI pins init, SPI udma channel init
-    spi_init(&spim, SPI1_MOSI, SPI1_MISO, SPI1_SCLK, SPI1_CSN0_A5);
-       // on GAP_B3_CONN, GAP_A4_CONN, GAP_B4_CONN, GAP_A5_CONN
-
-
-    // SPI Nbits, Mode (cpha, cpol),Slave/nMaster 
-    spi_format(&spim, 8, 0, 0);
-
-    // Set SPI fequency 
-    spi_frequency(&spim, GAPOC_LCD_SPI_FQCY_MHz*1000000);
-
-    printf("SPI Config done...\n"); 
-
-
-    // -- Configure LCD  --------------------------------
-    
-    ILI9341_begin(&spim);  
-    setRotation(&spim,1);
-
-    printf("LCD Config done...\n"); 
+   //  --  Initalize Board (GPIO direction and default level, supplies, etc.)       
+    GAPOC_BSP_Board_Init();
     
     
+   //  --  Initalize LCD and its SPI interface SPIM1      
+    spi_t   spim;     
+    GAPOC_LCD_Init( &spim );
+    
+
     // -- Initialize data for test patterns   -----------
         
     uint16_t Palette[19] = {  ILI9341_BLACK, 
@@ -143,45 +82,33 @@ void vTestLCD(void *parameters)
     {
         for (uint32_t j=0; j<lcdW; j++)
         {
-            Test_Pattern_gray8[i*lcdW +j] = i; 
+            Test_Pattern_gray8[i*lcdW +j] = j%256; 
         }
     }
     gray8_to_RGB565(Test_Pattern_gray8, Test_Pattern_rgb565, lcdW , lcdH);
 
 
     // -- Display stuff   ----------------------------------
-    uint8_t i =0;    
+    
     while(1)
     {
+        for (uint8_t i=0; i<19; i++)
         {
             writeFillRect(&spim, 0,0,lcdW,lcdH,ILI9341_WHITE);
         
-            setTextColor(Palette[i++]);
-            setCursor(10,20);  // (X,Y) of bottom left of text frame
-            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),1);  // smallest text --> comes out always black ?
-            setCursor(10,60);
+            setTextColor(Palette[i]);
+            setCursor(i*10,0);
+            writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),1);
             writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),2);
-            setCursor(10,160);
             writeText(&spim,"GreenWaves \nTechnologies\n",sizeof("GreenWaves \nTechnologies"),3);
 
-            #ifdef __FREERTOS__
-            vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS ); // Delay in ms.
-            #else
             wait(1);
-            #endif
             
             GAPOC_LCD_pushPixels(&spim, 0, 0, lcdW,lcdH, Test_Pattern_rgb565);
-            #ifdef __FREERTOS__
-            vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS );
-            #else
             wait(1);
-            #endif
         }
     }
     
     printf("end of the test\n");  // Never reached !
 
-    #ifdef __FREERTOS__
-    vTaskSuspend(NULL);
-    #endif
 }

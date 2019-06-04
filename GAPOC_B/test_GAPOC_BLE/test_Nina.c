@@ -44,7 +44,6 @@
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
-#define wait(x) vTaskDelay(x)
 #else
 #include "mbed_wait_api.h"
 #endif
@@ -67,9 +66,11 @@ volatile bool RxData_Rcvd = false;
 GAP_L2_DATA  uint8_t RxData[BLE_RXDATA_NUM_BYTES];    
 GAP_L2_DATA  uint8_t Tx_Array[BLE_TXDATA_NUM_BYTES] ={0};
 
+#ifedef __FREERTOS__
 /* Utilities to control tasks. */
 TaskHandle_t tasks[NBTASKS];
 uint8_t taskSuspended;
+#endif
 
 
 // ==== Application's Function Prototypes    ===================================
@@ -86,6 +87,7 @@ int main()
 {
     printf("\nBLE TEST !\n");
 
+    #ifdef __FREERTOS__
     #if configSUPPORT_DYNAMIC_ALLOCATION == 1
     BaseType_t xTask;
     TaskHandle_t xHandler0 = NULL;
@@ -94,7 +96,7 @@ int main()
                          NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
     if( xTask != pdPASS )
     {
-        printf("TestBridge is NULL !\n");
+        printf("TestBLE is NULL !\n");
         exit(0);
     }
     #endif //configSUPPORT_DYNAMIC_ALLOCATION
@@ -107,6 +109,10 @@ int main()
 
     /* Exit FreeRTOS */
     return 0;
+    #else
+    vTestBLE(NULL);
+    return 0;
+    #endif
 }
 
 
@@ -153,8 +159,12 @@ void vTestBLE(void *parameters)
     // Enable BLE (release reset)
     GAPOC_GPIO_Set_High(GAPOC_NINA_NRST);  
 
-   
-    wait(1); // some waiting needed after BLE reset... 
+
+    #ifdef __FREERTOS__
+    vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS ); // Delay in ms.
+    #else
+    wait(1); // some waiting needed after BLE reset...
+    #endif
  
     // Now release GPIO_LED_G/NINA_SW1 so it can be driven by NINA
     GAPOC_GPIO_Init_HighZ(GPIO_A1_B2);   
@@ -187,9 +197,11 @@ void vTestBLE(void *parameters)
     GAPOC_NINA_AT_Send("O");                   // AT Command to enter data mode   
     DBG_PRINT("Data Mode Entered!\n");
 
-
+    #ifdef __FREERTOS__
+    vTaskDelay( 1 * 1000 / portTICK_PERIOD_MS );
+    #else
     wait(1); // leave some time for Central to be properly configured 
-     
+    #endif
      
      
     // ***************************************************************************
@@ -219,10 +231,18 @@ void vTestBLE(void *parameters)
          
         // --    Briefly flash Green LED .....  --------------         
         GAPOC_GPIO_Set_High(GAPOC_HEARTBEAT_LED);
-        wait(0.1); 
+        #ifdef __FREERTOS__
+        vTaskDelay( 100 / portTICK_PERIOD_MS );
+        #else
+        wait(0.1);
+        #endif
         
         GAPOC_GPIO_Set_Low(GAPOC_HEARTBEAT_LED);
+        #ifdef __FREERTOS__
+        vTaskDelay( LED_OFF_DURATION_sec * 1000 / portTICK_PERIOD_MS );
+        #else
         wait(LED_OFF_DURATION_sec);    //was 1.9
+        #endif
         
         
         // --    ...and then....                --------------         
@@ -263,8 +283,9 @@ void vTestBLE(void *parameters)
 
     }
      
-    //return 0;
+    #ifdef __FREERTOS__
     vTaskSuspend(NULL);
+    #endif
  
 }
 

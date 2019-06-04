@@ -233,7 +233,7 @@ int main()
                          NULL, tskIDLE_PRIORITY + 1, &xHandler0 );
     if( xTask != pdPASS )
     {
-        printf("TestBridge is NULL !\n");
+        printf("TestSleep is NULL !\n");
         exit(0);
     }
     #endif //configSUPPORT_DYNAMIC_ALLOCATION
@@ -279,7 +279,7 @@ void vTestSleep(void *parameters)
         DBG_PRINT("Going to sleep, retentive_counter=%d \n", (int)retentive_counter); 
 
         #ifdef __FREERTOS__
-        vTaskDelay( NODEEPSLEEP_DURATION_sec * 1000 / portTICK_PERIOD_MS ); // Delay in ms(1 tick/ms).
+        vTaskDelay( NODEEPSLEEP_DURATION_sec * 1000 / portTICK_PERIOD_MS ); // Delay in ms.
         #else
         wait(NODEEPSLEEP_DURATION_sec);
         #endif

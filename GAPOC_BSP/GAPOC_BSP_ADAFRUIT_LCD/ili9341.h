@@ -42,7 +42,7 @@
 #define _ADAFRUIT_ILI9341H_
 
 
-#define GAPOC_LCD_SPI_FQCY_MHz  11       
+#define GAPOC_LCD_SPI_FQCY_MHz  12       
 // Fqcy of SPI clock used to communicate with Adafruit LCD
 // Granularity= sub-multiples of core clock (50MHz default)  [other values will be rounded to that]
 // Max achievable speed depends on quality of interconnection between GAPOC and LCD
