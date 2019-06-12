@@ -461,9 +461,12 @@ void writeFillRect(spi_t *spim, unsigned short x, unsigned short y, unsigned sho
 
 void spiWrite(spi_t *spim, unsigned char  d) 
 {
-  spi_master_cs(spim, 0);
-  spi_master_write(spim, d);
-  spi_master_cs(spim, 1);
+    spi_command_sequence_t sequence;
+    memset(&sequence, 0, sizeof(spi_command_sequence_t));  // clear structure contents
+
+    sequence.tx_bits = 8;
+    sequence.tx_data = d;
+    spi_master_transfer_command_sequence(spim, &sequence);  // this automatically handles the CS (I think)
 }
 
 
@@ -472,8 +475,3 @@ void writeCommand(spi_t *spim, unsigned char cmd){
     spiWrite(spim,cmd);
     GAPOC_GPIO_Set_High(TFT_SPI_DC);
 }
-
-
-
-
-
