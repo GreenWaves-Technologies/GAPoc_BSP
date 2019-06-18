@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 // #include "Gap8.h"
-#include "GAP8.h"   // strangely, worked also install caps on some installs ??
+//#include "GAP8.h"   // strangely, worked also install caps on some installs ??
 #include "gap_common.h"
 
 
