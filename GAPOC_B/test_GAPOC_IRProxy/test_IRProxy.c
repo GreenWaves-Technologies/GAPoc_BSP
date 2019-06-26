@@ -36,10 +36,11 @@
 
 #define ON_LCD  0
 #define ON_PC   1    
-#define NO_DISP   0    
+#define NO_DISP   2    
+
 
 /** ****************************
-// Select here if you want the pictures to be displayed on an Adafruit LCD attached to GAPOC
+// Select below if you want the pictures to be displayed on an Adafruit LCD attached to GAPOC
 // (select ON_LCD) or to be saved as .ppm on PC (select ON_PC) -- in this case you must have JTAG connected 
 // or not displayed at all (select NO_DISP)
 ** ****************************/
@@ -50,56 +51,23 @@
 // ===========================
 
 
-// TODO - Move this to BSP library
-
-#define PIC_WIDTH    (2*80)   // IR Proxy Frame = 80x80 pixels at 2bytes per pix (14bits provided as 2 successive bytes) -- temp. info is *not* included in data
+#define PIC_WIDTH    80   // IR Proxy Frame = 80x80 pixels at 2bytes per pix (14bits provided as 2 successive bytes) -- temp. info is *not* included in data
 #define PIC_HEIGHT   80    
 #define PIC_SIZE    (PIC_WIDTH*PIC_HEIGHT)  
-
-// Move this to BSP:
-#define IRPROXY_TINT    0x1     // Integration Time (in number of cycles -- Range 1:255)
-#define     IRPROXY_TINT_DFLT   0x010
-
-#define IRPROXY_GFID    0x2     // 12-bit ADC value for GFID - Range 0 for OV to 4095 for 3.6V
-#define     IRPROXY_GFID_DFLT   0xBB0
-
-#define IRPROXY_GSK     0x3     // 12-bit ADC value for VSK - Range 0 for OV to 4095 for 3.6V
-#define     IRPROXY_GSK_DFLT    0x540
-
-#define IRPROXY_CKDIV   0x4     // (USE WITH CAUTION) 
-#define     IRPROXY_CKDIV_DEFLT   0x002    
-#define     IRPROXY_CKDIV_INV_PIXCLK_MASK       0x1
-#define     IRPROXY_CKDIV_INV_PIXCLK_SHIFT      11
-#define     IRPROXY_CKDIV_DATA_PACKING_MASK     0x1
-#define     IRPROXY_CKDIV_DATA_PACKING_SHIFT    10
-#define     IRPROXY_CKDIV_VSYNC_POL_MASK        0x1
-#define     IRPROXY_CKDIV_VSYNC_POL_SHIFT       9
-#define     IRPROXY_CKDIV_HSYNC_POL_MASK        0x1
-#define     IRPROXY_CKDIV_HSYNC_POL_SHIFT       8   // !!! BEWARE !!! Looks like inverting HSYNC pol doesnt work; VSYNC is lost if trying to use it
-#define     IRPROXY_CKDIV_SENSOR_CLKDIV_MASK    0x1F
-#define     IRPROXY_CKDIV_SENSOR_CLKDIV_SHIFT   0
-
-#define IRPROXY_GMS    0x5     // Sensor Gain / Mirror / Size settings -- XXXXX|Gain3|Gain2|Gain1|X|0|UpRow|UpCol
-#define     IRPROXY_GMS_DFLT   0x053
-
-#define IRPROXY_TRIGGER_ADDR    0xE     // Trigger address parameter (send 0x010, then use Trigger Value register to set working mode
-#define     IRPROXY_TRIGGER_ADDR_MAGIC_NUM  0x010
-
-#define IRPROXY_SW_TRIGGER      0xE     // Software trigger command. If s/w trigger is enabled, send 0x011 to get 1 frame
-#define     IRPROXY_SW_TRIGGER_MAGICNUM     0x011
-
-#define IRPROXY_TRIGGER_VAL     0xF    // Trigger Mode Selection
-#define     IRPROXY_TRIGGER_VAL_DFLT      0x0
-#define     IRPROXY_TRIGGER_VAL_FREERUN     0x000  // free running mode
-#define     IRPROXY_TRIGGER_VAL_TRIGMODE_A  0x001  // 'Ulis' trigger mode
-#define     IRPROXY_TRIGGER_VAL_TRIGMODE_B  0x002  // 'FullScale' trigger mode
-#define     IRPROXY_TRIGGER_VAL_SWTRIG      0x003  // software trigger mode
 
 
 
 // ====  Includes    ==========================================================
 
 #include "GAPOC_BSP_General.h"
+
+#include "GAPOC_BSP_IRPROXY.h"
+
+
+#if (DISPLAY == ON_LCD) 
+  #include "GAPOC_BSP_ADAFRUIT_LCD.h"   
+#endif
+
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
@@ -113,25 +81,35 @@
 // <none>
 
     
-// ==== Application's public global variables  ==============================
+// ==== Application's variables  ==============================
 
-GAP_L2_DATA   unsigned char image_buffer_14bpp[ PIC_WIDTH*PIC_HEIGHT ];   // 14 bits per pixel, on 16 bits with 2MSBs="00"  -- for exploitation by algorithms
+// Note: pragma GAP_L2_DATA makes sure data is stored in L2 (just to be explicit -- is normally the case anyway for all global variables)
+//    as uDMA (used eg. for SPI or CPI transfers) can only access data in L2
 
 
+// Two buffers to be used in ping-pong mode to store data from CPI in one while other is being processed :
+GAP_L2_DATA   uint16_t buffer_processing_14bpp[ PIC_WIDTH*PIC_HEIGHT ];   // 14 bits per pixel, on 16 bits with 2MSBs="00"  
+GAP_L2_DATA   uint16_t buffer_receiving_14bpp[ PIC_WIDTH*PIC_HEIGHT ];   // 14 bits per pixel, on 16 bits with 2MSBs="00"  
 
-// ==== Application's own global variables  ====================================
+GAP_L2_DATA   int16_t buffer_ref_s16[ PIC_WIDTH*PIC_HEIGHT ];   // to store reference picture (shutter)
+GAP_L2_DATA   int16_t buffer_diff_s16[ PIC_WIDTH*PIC_HEIGHT ];  // diff between last captured picture and reference picture
+GAP_L2_DATA   uint8_t  scaled_buffer_diff_u8[ PIC_WIDTH*PIC_HEIGHT ];  // diff scaled to exploit full 8-bit range for display @8bpp
+
+#if (DISPLAY == ON_LCD)
+  GAP_L2_DATA  uint16_t image_buffer_rgb565[ lcdW*lcdH ];   // RGB565 buffer for LCD display
+#elif (DISPLAY == ON_PC)
+  uint32_t  dummy_frames_before_PC_store = 0;
+#endif            
+
 
 CPI_Type *const cpi_address[] = CPI_BASE_PTRS;
-
-static volatile uint32_t Picture_Index = 0;  // to manage non-blocking picture transfer (snapshot)
- 
 static GAP_L2_DATA    cpi_config_t cpi_config;
 static GAP_L2_DATA    cpi_transfer_t cpiTransfer;  
 static GAP_L2_DATA    cpi_handle_t hCPI;  
+static volatile uint32_t Picture_Index = 0;  // to manage non-blocking picture transfer (snapshot)
 
-GAP_L2_DATA   spi_t   spim1;      
-GAP_L2_DATA  uint16_t  spi_word16;
-        
+static GAP_L2_DATA   spi_t   spim1;      
+static GAP_L2_DATA  uint16_t  spi_word16;
 
 #ifdef __FREERTOS__
 /* Utilities to control tasks. */
@@ -143,13 +121,15 @@ uint8_t taskSuspended;
 
 
 // TODO: Move to BSP library
+/*
 void GAPOC_IRProxy_WriteReg12(uint8_t RegAddr, uint16_t WriteVal);
-void GAPOC_IRProxy_SPI_Init();
-
+void GAPOC_IRProxy_SPI_Init(uint32_t spi_fqcy_khz);
+*/
 
 // Local helper functions
-static void Callback_Single_Shot();   
+static void Callback_Got_Frame();   
 static void save_pict_ppm( unsigned char* pic_buffer);
+static void convert_14bpp_to_8bpp( unsigned char* pic_buffer_14bpp, unsigned char* pic_buffer_8bpp);
 
 
 void vTestIRProxy(void *parameters);
@@ -192,6 +172,8 @@ int main()
 
 void vTestIRProxy(void *parameters)
 {
+    uint32_t warmup_frame_count = 0;      
+    bool Calib_Done;
     DBG_PRINT("\nBasic Test of Proxy with ULIS IR Sensor on DF12 Connector CONN8\n\n");
     
     DBG_PRINT("Through your #define DISPLAY, you have selected to ");
@@ -213,32 +195,47 @@ void vTestIRProxy(void *parameters)
 #else
     #error "you didn't properly #define DISPLAY"   
 #endif
-// TODO -- ON_LCD not supported yet
     
     
 
     // ----  Initializations   -------------------------------------------------------------
     
+    // Get pointers to arrays as we'll want to swap roles (ping-pong buffers) and it's easy to do with pointers, not arrays
+    uint16_t* ptr_Processing = buffer_processing_14bpp;   // address of Processing Array 
+    uint16_t* ptr_Receiving = buffer_receiving_14bpp;     // address of Receiving Array  
+     
+    
     //  --  Initalize Board (GPIO direction and default level, supplies, etc.)       
     GAPOC_BSP_Board_Init();
     
-    
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-// TEMPORARY -- 
-    // To avoid pad frame bug
+    // Might want to set new frequency if willing to run faster than default 50MHz 
+    // either here using FLL_SetFrequency() or by changing defined symbol in GAPOC_BSP_Platform_Defs.h
+    // Caution (FIXME): wait() funnction used below assumes default clock (50MHz) and does not scale with clock
+    //  so required latencies inserted in code may need tuning if core clock is changed 
+ 
+       
+    // To avoid "Vsync-vs-B34 as GPIO"pad frame bug on GAP8 Cut1.0/1.1
     // To be used with modified board or sensor emulator,
     // won't work with IRProxy as is since this GPIO enables MCLK   
     GAPOC_AnyPin_Config( B34, PULL, uPORT_MuxAlt0 );  
         // pin GAP_B34 keeps default function (I2C_SDA) rather than use as GPIO_CIS_CLK -- Pull-Down ensures GPIO_CIS_CLK will be low so clk active
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-
+    
   
     // -- Initialize SPI1 for Proxy Use
-    GAPOC_IRProxy_SPI_Init();
+    GAPOC_IRProxy_SPI_Init( SPI_FQCY_IRSENSOR_KHZ );  // SPI_FQCY_IRSENSOR_KHZ as defined in GAPOC_BSP_platform_Defs.h
+
+    
+    // Make sure pin A4 (can be SPI MISO but not used here) is configured as GPIO, used as Master Clock Enable   
+    GAPOC_GPIO_Init_Pure_Output_High( GPIO_CIS_CLK_NOTEN ); // ACTIVE LOW (=standby pin) so init'd as not active
+
 
     // --  Initialize Heartbeat LED (LED enabled only if DIP Switch S6 is on) 
+    //   !! BEWARE !! not available if LCD used as same GPIO is used as LCD control line
+#if  DISPLAY != ON_LCD
     GAPOC_GPIO_Init_Pure_Output_High( GAPOC_HEARTBEAT_LED );
- 
+#endif
+
+
     // -- If wished, enable Vsync-controlled LED  (keep GPIO_CIS_LED_ENB = hi-Z to disable)
     GAPOC_GPIO_Init_Pure_Output_Low( GPIO_CIS_LED_ENB );  // Set Low to have LED on when Vsync is high, High to have LED on when Vsync is low
 
@@ -251,13 +248,15 @@ void vTestIRProxy(void *parameters)
         // UDMA_Init() is included in the above                
 
 
-    // -- Configure CPI i/f       -----------------------------------  
+    // -- Configure CPI i/f , Monochrome raw data   -----------------------------------  
 
 
     CPI_GetDefaultConfig(&cpi_config);
-    cpi_config.row_len = PIC_WIDTH ; 
-    cpi_config.resolution      = PIC_SIZE;
-    cpi_config.format          = BYPASS_BIGEND;  // Monochrome
+    cpi_config.row_len = 2*PIC_WIDTH ; 
+    cpi_config.resolution      = 2*PIC_WIDTH*PIC_HEIGHT;   // factro 2 as at 14bpp we're getting 2 bytes for one pixel 
+    cpi_config.format          = BYPASS_LITEND;  
+        // here we want 1st byte received over CPI (= MSByte of 14bit pixe) to be stored at address  0x01 and 2nd byte (=LSByte) at addres 0x00
+        // as uDMA assumes 16 bit data is stored in little-endian format
     cpi_config.shift           = 0;
     cpi_config.slice_en        = 0;
     cpi_config.frameDrop_en    = 0;
@@ -268,8 +267,8 @@ void vTestIRProxy(void *parameters)
    
     // Set-up uDMA for getting data from CPI:
 
-    cpiTransfer.data        = image_buffer_14bpp;
-    cpiTransfer.dataSize    = PIC_SIZE;  // !! MUST BE <128K
+    //  cpiTransfer.data      which is target buffer address will be set later (different buffers for ref picture and captured picture);
+    cpiTransfer.dataSize    = PIC_SIZE*2;  // 2 bytes per pix !
     cpiTransfer.configFlags = UDMA_CFG_DATA_SIZE(1); //0 -> 8bit //1 -> 16bit //2 -> 32bit -- ALWAYS USE 16-bits for CPI uDMA (?)
         // Will be used by CPI Reception function (blocking or non-blocking)
         
@@ -281,34 +280,35 @@ void vTestIRProxy(void *parameters)
               
     // -- Start IR Proxy:              ----------------------------------------------------------------------
 
-    #define  MIN_INTERCOMMAND_DELAY_ms  10  // Proxy requires 10ms min between 2 SPI commands ! (...that much, really ?!?)
+    #define  MIN_INTERCOMMAND_DELAY_ms  50.0  // Proxy requires 10ms min between 2 SPI commands and even up to 50ms (>16ms looks ok though) after clock setting 
+        // TODO reduce this delay as much as possible
+
     
     // --  Enable 3V3A/3V3D   -------------------
-    GAPOC_GPIO_Init_Pure_Output_High( GPIO_CIS_APWRON );              
-    GAPOC_GPIO_Init_Pure_Output_High( GPIO_CIS_DPWRON );  
-    
+    GAPOC_GPIO_Set_High( GPIO_CIS_APWRON );              
+    GAPOC_GPIO_Set_High( GPIO_CIS_DPWRON );  
+
     
     // --  Initialize trigger signal   ---------    
      GAPOC_GPIO_Set_High(GPIO_CIS_TRIGGER);      // Make sure trigger input is inactive (active high for snapshot mode A, active low for snapshot mode B)
-        
+        // GPIO_A3 on pin B1
+
+       
         
     // --  Master Clock On   --------------------
     // When voltages are established, wait 150ms and apply Master Clock
-    #define  MCLOCK_TURNON_LATENCY_ms       150.0
+    #define  MCLOCK_TURNON_LATENCY_ms       200.0
      #ifdef __FREERTOS__
      vTaskDelay( MCLOCK_TURNON_LATENCY_ms / portTICK_PERIOD_MS );
      #else
      wait( (float)(MCLOCK_TURNON_LATENCY_ms)/1000.0);
      #endif
-    GAPOC_GPIO_Set_Low( GPIO_CIS_CLK );      // Turn On MCLK (active low control)                                   
-        // Note: assuming here this signal controls enable of dedicated ClkGen, not used as clock itself
-        //  (board assembly option)
-      // !!! -- No effect if I/O was not configured as GPIO to work around pad mux bug !    
-            
+    // Reworked board: Turn on master clock through GAP_A4 = GPIO_CIS_CLK_NOTEN
+    GAPOC_GPIO_Set_Low( GPIO_CIS_CLK_NOTEN ); // ACTIVE LOW (=standby pin)
+          
     // NOTE: GAPOC_B (0.1) when using dedicated ClkGen for MCLK provides 2.048MHz
     //  while latest Proxy DS specifies 3.8MHz (earlier versions said 1.9MHZ with 2.048 OK)
     //  Impact: frame rate limited to 30Hz instead of 60Hz
-
 
     #define  IRPROXY_SETTLING_TIME_ms       150.0
     // else upcoming SPI prog may not be properly taken into account ? (min duration TBC)
@@ -321,7 +321,15 @@ void vTestIRProxy(void *parameters)
      
     // == Proxy is now ready to be configured through SPI Bus : ====
                    
-    // ---  Trigger mode Register  - --- 
+    // --- ClkDiv Register  -----------
+    GAPOC_IRProxy_WriteReg12( IRPROXY_CKDIV, 0x01);  // from DS, would expect PCLK = 0.5*MCLK/(2**(0x01+1)) = 2.048MHz/8 = 256KHz -- actually observing 512KHz..    
+    #ifdef __FREERTOS__
+    vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
+    #else
+    wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
+    #endif   
+    
+    // ---  Trigger mode Register  - ---    
     GAPOC_IRProxy_WriteReg12( IRPROXY_TRIGGER_ADDR, IRPROXY_TRIGGER_ADDR_MAGIC_NUM);
     #ifdef __FREERTOS__
     vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
@@ -336,7 +344,7 @@ void vTestIRProxy(void *parameters)
     #endif
 
     // --- Integration Time Register  ---
-    GAPOC_IRProxy_WriteReg12( IRPROXY_TINT, 0x010);     // DS says (hardwired) default is 0x10, FullScale suggests 0x20 (or 20dec?)
+    GAPOC_IRProxy_WriteReg12( IRPROXY_TINT, 0x10);     // DS says (hardwired) default is 0x10, FullScale suggests 0x20 (or 20dec?)
     #ifdef __FREERTOS__
     vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
     #else
@@ -344,7 +352,7 @@ void vTestIRProxy(void *parameters)
     #endif
         
     // --- GFID Register   --------------
-    GAPOC_IRProxy_WriteReg12( IRPROXY_GFID, 0x0BB);     // DS says default is 0xBB0, FullScale suggests 0x0BB 
+    GAPOC_IRProxy_WriteReg12( IRPROXY_GFID, 0xBB0);     // DS says default is 0xBB0, FullScale suggests 0x0BB 
     #ifdef __FREERTOS__
     vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
     #else
@@ -352,7 +360,7 @@ void vTestIRProxy(void *parameters)
     #endif
             
     // --- GSK  Register   --------------
-    GAPOC_IRProxy_WriteReg12( IRPROXY_GSK, 0x11C);      // DS says default is 0x540,  FullScale suggests 0x11C
+    GAPOC_IRProxy_WriteReg12( IRPROXY_GSK, 0x4C0);      // DS says default is 0x540,  FullScale suggests 0x11C
     #ifdef __FREERTOS__
     vTaskDelay( MIN_INTERCOMMAND_DELAY_ms / portTICK_PERIOD_MS );
     #else
@@ -367,54 +375,197 @@ void vTestIRProxy(void *parameters)
     wait(MIN_INTERCOMMAND_DELAY_ms/1000.0);
     #endif
         
-    // --- ClkDiv Register  -------------    (NB: Not taken into account if done as first access ??? TBC)
-    // Don't rely on default clkdiv  specified in DS as seen not to match h/w 
-    GAPOC_IRProxy_WriteReg12( IRPROXY_CKDIV, 0x01);  // from DS, would expect PCLK = 0.5*MCLK/(2**(0x01+1)) = 2.048MHz/8 = 256KHz -- actually observing 512KHz..
-
-        
     DBG_PRINT("IR Proxy Ready and Configured\n");  
+    
+    
+
+    // --- Initialize LCD for display of results if needed ------------------------------------------------------
+    
+    // BEWARE: LCD shield uses same SPIM1 as Proxy;
+    //         Initializing LCD will assign SPI to LCD shield and make it no more usable by Proxy
+#if (DISPLAY == ON_LCD)
+    GAPOC_LCD_Init( &spim1 );   // configures SPI1 for LCD & displays welcome message
+#endif
 
 
 
-    // -- Now capture frames in Snapshot mode with non-blocking reception ---------------------------------------
+    // -- Now prepare to capture frames in continuous mode with non-blocking reception ---------------------------------------
     
     
     // Enable CPI
-    // (CPI will be continuously active -- alternatively, we could
-    // disable it after picture taken, enable back prior to shooting next picture etc... To have more clock gating and save power)
     CPI_Enable(cpi_address[0], &cpi_config); // Activate configuration of CPI channel -- Starts gated clock of CPI; needed if disabled in callback (to save power)
 
       
     // Prepare handles for non-blocking camera capture
-    CPI_ReceptionCreateHandle(cpi_address[0], &hCPI, Callback_Single_Shot, NULL);  
+    CPI_ReceptionCreateHandle(cpi_address[0], &hCPI, Callback_Got_Frame, NULL);  
     DBG_PRINT("CPI Handle created\n");
 
 
+    // --  Information about shuttered picture to use as reference :   -------------------------------------------
+    
+#if (DISPLAY == ON_LCD)    
+    writeFillRect(&spim1, (lcdW-PIC_WIDTH)/2, (lcdH-PIC_HEIGHT)/2, PIC_WIDTH, PIC_HEIGHT, ILI9341_BLACK);   
+    DBG_PRINT("\n\n*****    APPLY SHUTTER till IR picture displayed    ****** \n\n");
+#else
+    GAPOC_GPIO_Set_High( GAPOC_HEARTBEAT_LED );
+    DBG_PRINT("\n\n*****    APPLY SHUTTER till Green Led (LED3) turns off    ****** \n\n");   
+#endif
+    Calib_Done = false;
+    
+    
+    
     //  ===   MAIN LOOP    =================================================================================================       
 
-     GAPOC_GPIO_Set_Low(GPIO_CIS_TRIGGER);      // Assert trigger signal 
+          
+    // -- Indicate initial receive buffer and launch First capture by camera :
+    
+    cpiTransfer.data        = (unsigned char*)ptr_Receiving;  // store picture in buffer for reference picture
+        // data received 8 bytes at a time over CPI is stored in a 16bpp buffer as data from IR PRoxy is actually 14 bits split in 2 bytes 
+
+    CPI_ReceptionNonBlocking(cpi_address[0], &hCPI, &cpiTransfer);  
+
+    GAPOC_GPIO_Set_Low(GPIO_CIS_TRIGGER);      // Start stream      
+    // Now free running...
+
+
+    while(1)
+    {    
+    
+        // Create working copies of pointer to be able to alter it while keeping memory of inital value 
+        uint16_t* ptr_Processing_tmp = ptr_Processing;
+        
+        // Use xx frames as "warm-up" and to leave time for user to put shutter in fromnt of lens, 
+        // the last frame of this serires will be used as refence.
+        // TODO: also allow calibration to be explictly required by user at any time e.g. by (temporarily) pulling up a GPIO on connector pin or through UART
+        #define NUM_WARMUP_FRAMES   100
+        if (warmup_frame_count++ == NUM_WARMUP_FRAMES)
+        {
+            Calib_Done  = true;  // and this is the picture that will actually be that taken as reference
+          #if (DISPLAY != ON_LCD)                                 
+            // If LCD not used : flag shutter done by turning Green Led off
+            GAPOC_GPIO_Set_Low( GAPOC_HEARTBEAT_LED );     
+          #endif              
+        }
+
+
+
+        // Process Buffer A (ping buffer) while buffer B is being filled (pong buffer) :
+        
+        if (!Calib_Done)    // Treat frame as reference frame (to be captured with shutter in front of lens) -- even though only last one will be actually used as ref
+        {         
+                
+            // Get_Frame_Average( uint16_t* buffer_processing_14bpp );
+            uint32_t frame_avg = 0;
+            for (uint32_t i=0; i<PIC_SIZE; i++)
+            {
+                frame_avg += *ptr_Processing_tmp++;  // progressing in 
+            }
+            frame_avg = frame_avg /PIC_SIZE;
+            ptr_Processing_tmp = ptr_Processing;   // re-init pointer after use (incremantations)
+            
+            // Now substract frame average from each pixel
+            for (uint32_t i=0; i<PIC_SIZE; i++)
+            {
+                buffer_ref_s16[i] = *ptr_Processing_tmp++ - frame_avg;
+            }         
+            ptr_Processing_tmp = ptr_Processing;   // re-init pointer after use (incrementations)
+                  
+        }
+ 
+        
+        else      // Calibration done
+        {
+            // get difference between captured frame and reference frame (shutter)
+            // also remember min and max value
+            int32_t MIN_buffer_diff = (1<<14);  // init at max possible value
+            int32_t MAX_buffer_diff = -(1<<14);  // init at min possible value
+            
+            for (uint32_t i=0; i<PIC_SIZE; i++)
+            {
+                buffer_diff_s16[i] = *ptr_Processing_tmp++ - buffer_ref_s16[i];
+                if (buffer_diff_s16[i] <0)
+                {
+                    DBG_PRINT("Negative value!\n");
+                    buffer_diff_s16[i] = 0;
+                }
+                if (buffer_diff_s16[i] > (1<<14))
+                {
+                    DBG_PRINT("Saturation!\n");
+                    buffer_diff_s16[i] = (1<<14);
+                }
+                
+                // Update min and max :
+                if ( buffer_diff_s16[i] > MAX_buffer_diff)
+                {
+                    MAX_buffer_diff = buffer_diff_s16[i];
+                }
+                else if ( buffer_diff_s16[i] < MIN_buffer_diff)
+                {
+                    MIN_buffer_diff = buffer_diff_s16[i];
+                }
+                
+            }  
+            ptr_Processing_tmp = ptr_Processing;   // re-init pointer after use (incremantations)
+                        
+            // scale difference to exploit full swing (tone mapping + contrast enhancement)
+            uint32_t  MinMax_Swing = MAX_buffer_diff - MIN_buffer_diff;
+            for (uint32_t i=0; i<PIC_SIZE; i++)
+            {
+                scaled_buffer_diff_u8[i] = ( (buffer_diff_s16[i] - MIN_buffer_diff) * 255 ) / MinMax_Swing;
+            }  
+                     
+
+        #if (DISPLAY == ON_LCD)    
+            // Note: if display is slow and it takes longer to display an image than capture next one, the frame rate will be broken    
+
+            #define UPSCALE_FACTOR  1   
+                            // !! BEWARE !! Max.3 for 80x80 IR sensor and 240-lines LCD ! (as 3x80=240)
+                            // ** but also SPI must be fast enough to transfer full picture in short time
+                            // ** Currently need to stick to UPSCALE_FACTOR = 1   (i.e. no upscale in fact...)
+            gray8_to_RGB565_upscale(scaled_buffer_diff_u8, image_buffer_rgb565, PIC_WIDTH , PIC_HEIGHT, UPSCALE_FACTOR);
+            GAPOC_LCD_pushPixels(&spim1, (lcdW-PIC_WIDTH)/2, (lcdH-PIC_HEIGHT)/2, UPSCALE_FACTOR*PIC_WIDTH, UPSCALE_FACTOR*PIC_HEIGHT, image_buffer_rgb565); 
+ 
+       
+        #elif (DISPLAY == ON_PC) 
+            // Keep running after initial shutter for a few dummy pictures, then store on on IO file system and exit loop (terminate program)
+            #define NUM_FRAMES_BEFORE_STORAGE   80
+            if (dummy_frames_before_PC_store++ == NUM_FRAMES_BEFORE_STORAGE)
+            {
+                DBG_PRINT(".......  Please wait until you get Proxy off message ..........\n");
+                save_pict_ppm( scaled_buffer_diff_u8 );
+                break;
+            }
+        #endif
      
-//    while(1)  // Comment out -- for now capture a single frame after sensor has stabilized     
-    #define NUM_DUMMY_SNAPSHOTS 1000
-    for (uint32_t i=0; i <NUM_DUMMY_SNAPSHOTS; i++)
-    {
-      
-        // -- Enable capture by camera (non-blocking)
-        CPI_ReceptionNonBlocking(cpi_address[0], &hCPI, &cpiTransfer);  
-
+        }  // end if (!Calib_Done) ... else ...
+         
+                 
+        // Wait for image capture finished
+        // Check flag is not already set, else it'd mean processing took longer than image capture going on in parallel,
+        // and therefore we're taking too much time to process vs. camera full frame rate
+        if (Picture_Index ==0)
+        {
+            //DBG_PRINT("Processing too long; Camera full frame rate broken !!!\n");
+        }
         while (Picture_Index ==0);  // wait for flag from callback signalling image capture finished
+        Picture_Index =0;  
+        
+                       
+        // Now swap ping and pong buffers
+        uint16_t* tmp_Buff_Pointer = ptr_Processing;
+        ptr_Processing = ptr_Receiving;
+        ptr_Receiving = tmp_Buff_Pointer;
+        
 
-        // Got picture...   
-        Picture_Index =0;
+        // Relaunch picture capture
+        cpiTransfer.data        = (unsigned char*)ptr_Receiving;  // store picture in buffer for reference picture
+        CPI_ReceptionNonBlocking(cpi_address[0], &hCPI, &cpiTransfer);  
+        
+        
+    }  // end while(1)
+        
 
-    }      
-
-
-    // Save last snapshot (with 14bpp to 8bpp conversion) for display on PC or LCD
-    save_pict_ppm( image_buffer_14bpp );
-    
-    
-    
+   
     //  ===   END PROCESSING   =================================================================================================           
 
     DBG_PRINT("\nDone, Switching off IR Proxy\n");
@@ -438,8 +589,8 @@ void vTestIRProxy(void *parameters)
     GAPOC_GPIO_Set_Low( GPIO_CIS_DPWRON );      
         
     // Switch off master clock to IR sensor
-    GAPOC_GPIO_Set_High( GPIO_CIS_CLK );      // Turn Off MCLK (active low control) [signal goes to ClkGen powered by always on 2V5]                                     
-        // !!! -- No effect if I/O was not configured as GPIO to work around pad mux bug !    
+    GAPOC_GPIO_Set_High( GPIO_CIS_CLK_NOTEN ); // ACTIVE LOW (=standby pin)
+
         
     // ----------------------------------------------------------
     
@@ -458,60 +609,41 @@ void vTestIRProxy(void *parameters)
 // ##### LOCAL FUNCTION DEFINITIONS  ###########################################
 
 
-static void Callback_Single_Shot()   
+static void Callback_Got_Frame()   
 {   
     Picture_Index++;    
 }
 
 // ----------------------------------------------------------------------
-static void save_pict_ppm( unsigned char* pic_buffer_14bpp)
+static void convert_14bpp_to_8bpp( unsigned char* pic_buffer_14bpp, unsigned char* pic_buffer_8bpp)
+{
+    for (uint32_t i=0; i<PIC_SIZE/2; i++)
+    { 
+        // Could do rounding ...not implemented here
+
+        pic_buffer_8bpp[i] = ( (pic_buffer_14bpp[2*i] <<2 ) | (pic_buffer_14bpp[2*i+1] >>6)  );   // simple truncation from 14 to 8 bits
+    }
+}
+
+
+// ----------------------------------------------------------------------
+static void save_pict_ppm( unsigned char* pic_buffer_8bpp)
 {
     static uint32_t imgNum = 0;
     static char imgName[50];    
-    static unsigned char pic_buffer_8bpp[ PIC_WIDTH*PIC_HEIGHT /2];  // 8bpp = 8 MSBs of above + rounding  -- for display/debug only
-  
-    
-    // Could add some rounding
-    // but BEWARE if original value is 0x3FF then rounding would lead to 0x100 rather than 0xFF ...does not fit on 8 bits (wraps to 0x00!) 
-    // Not coped with yet below
 
-
-    for (uint32_t i=0; i<PIC_SIZE/2; i++)
-    { 
-    
-        // Could do rounding but BEWARE
-        //  if original value is 0x3FF then rounding would lead to 0x100 rather than 0xFF ...does not fit on 8 bits (wraps to 0x00!) 
-        // Not coped with yet below
-        /*
-        if ( (pic_buffer_14bpp[i+1] & 0x3F) > (1<<5) )  // Are LSBs we're going to drop > 0.5x max value they can represent i.e > 2**5 ?
-        {
-            uint8_t rounding = 0x1;
-        }  
-        else 
-         {
-            rounding = 0x0;
-        }         
-        pic_buffer_8bpp[i] = ( (image_buffer_14bpp[2*i] <<2) + (image_buffer_14bpp[2*i+1] >>6) + rounding );
-        */
-        
-        pic_buffer_8bpp[i] = ( (image_buffer_14bpp[2*i] <<2) + (image_buffer_14bpp[2*i+1] >>6)  );   // no rounding here
-  
-        DBG_PRINT("%d.",(int)pic_buffer_8bpp[i]);
-    }
-    DBG_PRINT("\n\n");
-
-        
-
-        sprintf(imgName, "../../../img_OUT%d.ppm", (int)imgNum++);
-        printf("\nimgName: %s\n", imgName);
-        WriteImageToFile(imgName, PIC_WIDTH/2, PIC_HEIGHT, (pic_buffer_8bpp));
+    sprintf(imgName, "../../../img_OUT%d.ppm", (int)imgNum++);
+    printf("\nimgName: %s\n", imgName);
+    WriteImageToFile(imgName, PIC_WIDTH, PIC_HEIGHT, (pic_buffer_8bpp));
 }
         
         
 
 // ------------------------------------------------------------
 
-void GAPOC_IRProxy_SPI_Init()
+/*
+
+void GAPOC_IRProxy_SPI_Init(uint32_t spi_fqcy_khz)
 {
         // SPI pins init, SPI udma channel init 
         spi_init(&spim1, SPI1_MOSI, NC, SPI1_SCLK, SPI1_CSN0_A5);
@@ -523,7 +655,7 @@ void GAPOC_IRProxy_SPI_Init()
             // BEWARE - For some reason when doing 16-bit SPI transfers, SPI send MSB first in ech byte and LSByte first 
             
         // Set SPI fequency *
-        spi_frequency(&spim1, SPI_FQCY_IRSENSOR_KHZ*1000);
+        spi_frequency(&spim1, spi_fqcy_khz*1000);
 
         DBG_PRINT("\nSPI1 initalized\n");
            
@@ -532,9 +664,7 @@ void GAPOC_IRProxy_SPI_Init()
 
 // -----------------------------------------------------------------
 
-/** Function : GAPOC_IRProxy_WriteReg12 
-    Action : Using SPI1, Writes value WriteVal into 12-bit register of the IR Proxy specified by its 4-bit address RegAddr
-*/
+
      
 void GAPOC_IRProxy_WriteReg12(uint8_t RegAddr, uint16_t WriteVal)  // RegAddr to fit on 4 bits and WriteVal on 12 bits
 {
@@ -564,7 +694,8 @@ void GAPOC_IRProxy_WriteReg12(uint8_t RegAddr, uint16_t WriteVal)  // RegAddr to
         // NB - When doing 16-bit SPI transfers, it appears SPI send MSB first in ech byte and LSByte first ??!!??       
     spi_master_cs(&spim1, 1);    
 }
-        
+ 
+*/     
 
 // ## END OF FILE ##############################################################################
 

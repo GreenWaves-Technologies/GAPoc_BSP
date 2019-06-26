@@ -106,6 +106,7 @@ int main()
 void vTestBlinkLED(void *parameters)
 {
     DBG_PRINT("\nGAPOC LED Blink Test\n\n");
+
     DBG_PRINT("\n\n** DIP Switch position #6 must be closed (ON) to enable the on-board LED **\n");
     DBG_PRINT("and pin xx of Connector3 also bears the GPIO signal that controls the LED\n\n");    
       

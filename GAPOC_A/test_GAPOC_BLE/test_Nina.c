@@ -214,7 +214,7 @@ void vTestBLE(void *parameters)
     // ***************************************************************************
     
 
-#if SPS_TX_NRX==0               
+#if SPS_TX_NRX==1               
     // If (simplex) Reception Mode selected,  
     // Prepare for reception of xx bytes from UART (<< BLE) at any time
     GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);   
