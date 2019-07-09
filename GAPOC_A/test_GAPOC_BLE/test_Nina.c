@@ -27,8 +27,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
- 
+
+
 // #############################################################################
 // ##### DECLARATIONS  ########################################################
 
@@ -40,7 +40,15 @@
 
 #include "GAPOC_BSP_General.h"
 
+//#define BSP_OLD 1
+
+#ifdef BSP_OLD
 #include "GAPOC_BSP_Nina.h"
+#else
+#include "pmsis_os.h"
+#include "pmsis_task.h"
+#include "nina_b112.h"
+#endif
 
 #ifdef __FREERTOS__
 #include "FreeRTOS_util.h"
@@ -63,7 +71,7 @@ volatile bool RxData_Rcvd = false;
 
 #define BLE_RXDATA_NUM_BYTES    3
 #define BLE_TXDATA_NUM_BYTES    3
-GAP_L2_DATA  uint8_t RxData[BLE_RXDATA_NUM_BYTES];    
+GAP_L2_DATA  uint8_t RxData[BLE_RXDATA_NUM_BYTES];
 GAP_L2_DATA  uint8_t Tx_Array[BLE_TXDATA_NUM_BYTES] ={0};
 
 #ifdef __FREERTOS__
@@ -84,6 +92,7 @@ void vTestBLE(void *parameters);
 // #############################################################################
 // #####     MAIN APPLICATION        ###########################################
 
+#ifdef BSP_OLD
 int main()
 {
     printf("\nBLE TEST !\n");
@@ -115,7 +124,16 @@ int main()
     return 0;
     #endif
 }
+#else
+int main(void)
+{
+    printf("\n\n\t *** BLE TEST ***\n\n");
+    /* Exit FreeRTOS */
+    int ret = pmsis_kickoff((void *) vTestBLE);
 
+    return 0;
+}
+#endif
 
 void vTestBLE(void *parameters)
 {
@@ -124,17 +142,17 @@ void vTestBLE(void *parameters)
 
 
     DBG_PRINT("GAP Nina test\n");
-        
+
     // Initalize Board (GPIO direction and default level, supplies, etc.)
     GAPOC_BSP_Board_Init();
-    
+
     // NOTICE:
     // With current silicon there may be problems to use UART Rx (GAP8 receiving) while HyperBus interface is
     // enabled. To use UART Rx, pin B7 (=HYPER_DQ[6] when used as HyperBus I/O) must be configured in its default functionality (Alt.0),
     // which means HyperBus is not usable at this time.
     // In other words, usage of HyperBus and UART Rx must be time multiplexed, toggling the functionality of pin B7.
-    
-    // To limit power consumption from HyperMem without initializing HyperBus interface, 
+
+    // To limit power consumption from HyperMem without initializing HyperBus interface,
     // you may pull its nCS low (inactive) by using GPIO mode, e.g. as follows:
     //GAPOC_GPIO_Init_Pure_Output_High(GPIO_A30);  // CSN0 = GPIO30 on B15
     //GAPOC_GPIO_Init_Pure_Output_High(GPIO_A31);  // CSN1 = GPIO31 on A16
@@ -145,20 +163,26 @@ void vTestBLE(void *parameters)
 
 
     // --  Initialize UART, no pull   -----
+    #ifdef BSP_OLD
     GAPOC_NINA_AT_Uart_Init();
+    #else
+    nina_t ble;
+    nina_b112_open(&ble);
+    //printf("Init done\n");
+    #endif
 
 
     // --  Start NINA-B1 BLE module   -----
-          
+
     // Make sure NINA_SW1 is HIGH at BLE Start-up -- GPIO_LED_G/NINA_SW1 = GPIO_A1_B2 on GAPOC
     // GAPOC_GPIO_Init_Pure_Output_High(GPIO_A1_B2);
 
     // Init GPIO that will control NINA DSR in deasserted position
     GAPOC_GPIO_Init_Pure_Output_Low(GAPOC_NINA17_DSR);
 
-    
+
     // Enable BLE (release reset)
-    GAPOC_GPIO_Set_High(GAPOC_NINA_NRST);  
+    GAPOC_GPIO_Set_High(GAPOC_NINA_NRST);
 
 
     #ifdef __FREERTOS__
@@ -166,36 +190,52 @@ void vTestBLE(void *parameters)
     #else
     wait(1); // some waiting needed after BLE reset...
     #endif
- 
+
     // Now release GPIO_LED_G/NINA_SW1 so it can be driven by NINA
-    GAPOC_GPIO_Init_HighZ(GPIO_A1_B2);   
+    GAPOC_GPIO_Init_HighZ(GPIO_A1_B2);
 
-
+    #ifdef BSP_OLD
     // Initiliaze NINA as BLE Peripheral
-    GAPOC_NINA_AT_Send("E0");                   // Echo OFF    
+    GAPOC_NINA_AT_Send("E0");                   // Echo OFF
 
-    //GAPOC_NINA_AT_Query("+CGMI", Resp_String);            
+    //GAPOC_NINA_AT_Query("+CGMI", Resp_String);
     GAPOC_NINA_AT_Send("+UFACTORY");            // Restore factory defined configuration
     GAPOC_NINA_AT_Send("+UBTUB=FFFFFFFFFFFF");  // Unbond all devices
     GAPOC_NINA_AT_Send("+UBTLE=2");             // BLE Role = Peripheral
     GAPOC_NINA_AT_Send("+UBTLN=GreenWaves-GAPOC");         // Set Local Bluetooth Name
     //GAPOC_NINA_AT_Send("+UBTLECFG=1,480");      // BLE Configuration Param#1 =  Min adv. interval = 480x625ns
     //GAPOC_NINA_AT_Send("+UBTLECFG=2,640");      // BLE Configuration Param#2 =  Max adv. interval = 640x625ns
+    #else
+    nina_b112_AT_send(&ble, "E0");
+    printf("Sent E0\n");
+    nina_b112_AT_send(&ble, "+UFACTORY");
+    printf("Sent +UFACTORY\n");
+    nina_b112_AT_send(&ble, "+UBTUB=FFFFFFFFFFFF");
+    nina_b112_AT_send(&ble, "+UBTLE=2");
+    nina_b112_AT_send(&ble, "+UBTLN=GreenWaves-GAPOC");
+    #endif
 
- 
     DBG_PRINT("AT Config Done\n");
-             
+
     // After Reboot of NINA,  central connects to NINA and NINA will provide
     // unsollicited AT event: +UUBTACLC:<peer handle,0,<remote BT address>)
     // (...but sometimes just provides empty event instead !?)
-    
+
     // Just make sure NINA sends something as AT unsolicited response, therefore is ready :
+    #ifdef BSP_OLD
     GAPOC_NINA_AT_WaitForEvent(Resp_String);
+    #else
+    nina_b112_wait_for_event(&ble, Resp_String);
+    #endif
     DBG_PRINT("Received Event after reboot\n");
 
 
     // Enter Data Mode
-    GAPOC_NINA_AT_Send("O");                   // AT Command to enter data mode   
+    #ifdef BSP_OLD
+    GAPOC_NINA_AT_Send("O");                   // AT Command to enter data mode
+    #else
+    nina_b112_AT_cmd_send(&ble, "O");
+    #endif
     DBG_PRINT("Data Mode Entered!\n");
 
 
@@ -204,66 +244,76 @@ void vTestBLE(void *parameters)
     #else
     wait(1); // leave some time for Central to be properly configured
     #endif
-     
-     
-     
+
+
+
     // ***************************************************************************
     // SPS Service on NINA module seems to work unrilably in duplex mode  ???
     // --> Stick to unidirectional usage
 #define SPS_TX_NRX  1    // set to 1 to select SPS transmission, 0 for reception
     // ***************************************************************************
-    
 
-#if SPS_TX_NRX==1               
-    // If (simplex) Reception Mode selected,  
+
+#if SPS_TX_NRX==1
+    // If (simplex) Reception Mode selected,
     // Prepare for reception of xx bytes from UART (<< BLE) at any time
-    GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);   
+    #ifdef BSP_OLD
+    GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);
+    #else
+    pi_task_t task;
+    pi_task_callback_no_mutex(&task, Callback_RxData, NULL);
+    nina_b112_get_data(&ble, RxData, BLE_RXDATA_NUM_BYTES, &task);
+    #endif
 #endif
-    // ----------------------------------------------------------            
- 
-            
+    // ----------------------------------------------------------
 
-    #define LED_OFF_DURATION_sec  0.2   
-    #define NB_ITERATIONS  10  
+
+
+    #define LED_OFF_DURATION_sec  0.2
+    #define NB_ITERATIONS  10
     #define DELAY_BETWEEN_ITERATIONs_MS     1000
     uint8_t j =0;
-    
-    while(1) 
+
+    while(1)
     // for (uint8_t k=0; k<NB_ITERATIONS; k++)
     {
-         
-        // --    Briefly flash Green LED .....  --------------         
+
+        // --    Briefly flash Green LED .....  --------------
         GAPOC_GPIO_Set_High(GAPOC_HEARTBEAT_LED);
         #ifdef __FREERTOS__
         vTaskDelay( 100 / portTICK_PERIOD_MS );
         #else
         wait(0.1);
         #endif
-        
+
         GAPOC_GPIO_Set_Low(GAPOC_HEARTBEAT_LED);
         #ifdef __FREERTOS__
         vTaskDelay( LED_OFF_DURATION_sec * 1000 / portTICK_PERIOD_MS );
         #else
         wait(LED_OFF_DURATION_sec);    //was 1.9
         #endif
-        
-        
-        // --    ...and then....                --------------         
-        
+
+
+        // --    ...and then....                --------------
+
 #if   SPS_TX_NRX==1     // Transmission
 
-        // --    If (simplex) Transmission Mode selected,  ---- 
+        // --    If (simplex) Transmission Mode selected,  ----
         // --    send xx bytes over UART (>> BLE) now      ----
         for (uint8_t i=0; i<sizeof(Tx_Array); i++)
         {
             Tx_Array[i]=j++%10;
-        }            
+        }
+        #ifdef BSP_OLD
         GAPOC_NINA_Send_ByteArray_Blocking( Tx_Array, sizeof(Tx_Array) );
-            
-#elif SPS_TX_NRX==0     // Reception      
-       
-        // --    If (simplex) Reception Mode selected,      ---- 
-        // --    display xx bytes when received from UART (<< BLE)               
+        #else
+        nina_b112_get_data_blocking(&ble, Tx_Array, sizeof(Tx_Array));
+        #endif
+
+#elif SPS_TX_NRX==0     // Reception
+
+        // --    If (simplex) Reception Mode selected,      ----
+        // --    display xx bytes when received from UART (<< BLE)
         if (RxData_Rcvd)
         {
             for (uint8_t j=0; j<BLE_RXDATA_NUM_BYTES; j++)
@@ -271,12 +321,12 @@ void vTestBLE(void *parameters)
                 putchar(RxData[j]+0x30);
             }
             putchar('\n');
-          
+
             // Relaunch reception of xx bytes :
-            RxData_Rcvd = false;           
-            GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);   
-        }         
-        
+            RxData_Rcvd = false;
+            GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);
+        }
+
 #else
   #error "SPS_TX_NRX not properly set"
 #endif
@@ -289,11 +339,11 @@ void vTestBLE(void *parameters)
         #endif
 
     }
-     
+
     #ifdef __FREERTOS__
     vTaskSuspend(NULL);
     #endif
- 
+
 }
 
 
@@ -308,5 +358,3 @@ static void Callback_RxData()
 
 
 // ## END OF FILE ##############################################################################
-
-
