@@ -42,7 +42,7 @@
 
 //#define BSP_OLD 1
 
-#ifdef BSP_OLD
+#if (USE_PMSIS == 0)
 #include "GAPOC_BSP_Nina.h"
 #else
 #include "pmsis_os.h"
@@ -92,7 +92,7 @@ void vTestBLE(void *parameters);
 // #############################################################################
 // #####     MAIN APPLICATION        ###########################################
 
-#ifdef BSP_OLD
+#if (USE_PMSIS == 0)
 int main()
 {
     printf("\nBLE TEST !\n");
@@ -163,7 +163,7 @@ void vTestBLE(void *parameters)
 
 
     // --  Initialize UART, no pull   -----
-    #ifdef BSP_OLD
+    #if (USE_PMSIS == 0)
     GAPOC_NINA_AT_Uart_Init();
     #else
     nina_t ble;
@@ -194,18 +194,21 @@ void vTestBLE(void *parameters)
     // Now release GPIO_LED_G/NINA_SW1 so it can be driven by NINA
     GAPOC_GPIO_Init_HighZ(GPIO_A1_B2);
 
-    #ifdef BSP_OLD
+    #if (USE_PMSIS == 0)
+    printf("Sending cmd using old bsp\n");
     // Initiliaze NINA as BLE Peripheral
     GAPOC_NINA_AT_Send("E0");                   // Echo OFF
-
+    printf("Sent E0\n");
     //GAPOC_NINA_AT_Query("+CGMI", Resp_String);
     GAPOC_NINA_AT_Send("+UFACTORY");            // Restore factory defined configuration
+    printf("Sent +UFACTORY\n");
     GAPOC_NINA_AT_Send("+UBTUB=FFFFFFFFFFFF");  // Unbond all devices
     GAPOC_NINA_AT_Send("+UBTLE=2");             // BLE Role = Peripheral
     GAPOC_NINA_AT_Send("+UBTLN=GreenWaves-GAPOC");         // Set Local Bluetooth Name
     //GAPOC_NINA_AT_Send("+UBTLECFG=1,480");      // BLE Configuration Param#1 =  Min adv. interval = 480x625ns
     //GAPOC_NINA_AT_Send("+UBTLECFG=2,640");      // BLE Configuration Param#2 =  Max adv. interval = 640x625ns
     #else
+    printf("Sending cmd using pmsis bsp\n");
     nina_b112_AT_send(&ble, "E0");
     printf("Sent E0\n");
     nina_b112_AT_send(&ble, "+UFACTORY");
@@ -222,7 +225,7 @@ void vTestBLE(void *parameters)
     // (...but sometimes just provides empty event instead !?)
 
     // Just make sure NINA sends something as AT unsolicited response, therefore is ready :
-    #ifdef BSP_OLD
+    #if (USE_PMSIS == 0)
     GAPOC_NINA_AT_WaitForEvent(Resp_String);
     #else
     nina_b112_wait_for_event(&ble, Resp_String);
@@ -231,7 +234,7 @@ void vTestBLE(void *parameters)
 
 
     // Enter Data Mode
-    #ifdef BSP_OLD
+    #if (USE_PMSIS == 0)
     GAPOC_NINA_AT_Send("O");                   // AT Command to enter data mode
     #else
     nina_b112_AT_cmd_send(&ble, "O");
@@ -257,7 +260,7 @@ void vTestBLE(void *parameters)
 #if SPS_TX_NRX==1
     // If (simplex) Reception Mode selected,
     // Prepare for reception of xx bytes from UART (<< BLE) at any time
-    #ifdef BSP_OLD
+    #if (USE_PMSIS == 0)
     GAPOC_NINA_Get_ByteArray_NonBlocking(RxData, BLE_RXDATA_NUM_BYTES, Callback_RxData);
     #else
     pi_task_t task;
@@ -304,7 +307,7 @@ void vTestBLE(void *parameters)
         {
             Tx_Array[i]=j++%10;
         }
-        #ifdef BSP_OLD
+        #if (USE_PMSIS == 0)
         GAPOC_NINA_Send_ByteArray_Blocking( Tx_Array, sizeof(Tx_Array) );
         #else
         nina_b112_get_data_blocking(&ble, Tx_Array, sizeof(Tx_Array));
