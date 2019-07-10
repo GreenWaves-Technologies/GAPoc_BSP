@@ -23,6 +23,7 @@
 #include "udma_uart.h"
 //#include "bsp/bsp.h"
 #include "nina_b112.h"
+#include "GAPOC_BSP_General.h"
 
 /*******************************************************************************
  * Definitions
@@ -107,6 +108,9 @@ void nina_b112_open(nina_t *ble)
     pi_uart_open(&(ble->uart_device));
 
     new_rx_byte = 0;
+
+    GAPOC_AnyPin_Config(UART_TX, NOPULL, uPORT_MuxAlt0);  // Remove pull-up on UART_TX
+    GAPOC_AnyPin_Config(UART_RX, NOPULL, uPORT_MuxAlt0);  // Remove pull-up on UART_TX
 }
 
 void nina_b112_AT_cmd_send(nina_t *ble, const char* cmd)
@@ -126,7 +130,7 @@ void __nina_b112_data_received(void *arg)
 {
     //nina_t *ble = (nina_t *) arg;
     static uint32_t index = 0;
-    static unsigned char prev_byte = S3char;
+    static unsigned char prev_byte;
     new_rx_byte = 1;
     //printf("Received data : %c %d\n", *(ble->rx_char), new_rx_byte);
     //printf("Received data : %c %d\n", rx_char, new_rx_byte);
