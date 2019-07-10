@@ -17,6 +17,7 @@ endif
 GAPOC_PLATFORM_C = $(wildcard ../*.c)
 GENERAL_C = $(wildcard ../../GAPOC_BSP/GAPOC_BSP_GENERAL/*.c)
 MT9V034_C =    $(wildcard ../../GAPOC_BSP/GAPOC_BSP_MT9V034/*.c)
-NINA_C =    $(wildcard ../../GAPOC_BSP/GAPOC_BSP_NINA/*.c)
+#NINA_C =    $(wildcard ../../GAPOC_BSP/GAPOC_BSP_NINA/*.c)
+NINA_C = $(filter-out ../../GAPOC_BSP/GAPOC_BSP_NINA/nina_b112.c, $(wildcard ../../GAPOC_BSP/GAPOC_BSP_NINA/*.c))
 ADAFRUIT_LCD_C =    $(wildcard ../../GAPOC_BSP/GAPOC_BSP_ADAFRUIT_LCD/*.c)
 GAPOC_BSP_C = $(GAPOC_PLATFORM_C) $(GENERAL_C) $(MT9V034_C) $(NINA_C) $(ADAFRUIT_LCD_C)
