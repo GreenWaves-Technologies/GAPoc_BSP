@@ -24,10 +24,10 @@
  * Definitions
  ******************************************************************************/
 
-#ifdef DEBUG
-#define DEBUG_PRINTF printf
+#ifdef DBG
+#define DBG_PRINTF printf
 #else
-#define DEBUG_PRINTF(...) ((void) 0)
+#define DBG_PRINTF(...) ((void) 0)
 #endif  /* DEBUG */
 
 
@@ -71,7 +71,9 @@ typedef enum _at_resp_state
 
 void nina_b112_conf_init(nina_t *ble);
 
-void nina_b112_open(nina_t *ble);
+int32_t nina_b112_open(nina_t *ble);
+
+void nina_b112_close(nina_t *ble);
 
 void nina_b112_AT_cmd_send(nina_t *ble, const char* cmd);
 
@@ -85,6 +87,8 @@ void nina_b112_wait_for_event(nina_t *ble, char* resp);
 void nina_b112_get_data_blocking(nina_t *ble, uint8_t* buffer, uint32_t size);
 
 void nina_b112_get_data(nina_t *ble, uint8_t* buffer, uint32_t size, struct pi_task *task);
+
+void nina_b112_exit_data_mode(nina_t *ble);
 
 #if 0
 void nina_b112_send_data_blocking(nina_t *ble, const uint8_t* buffer, uint32_t size);
