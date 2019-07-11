@@ -198,24 +198,35 @@ void vTestBLE(void *parameters)
     printf("Sending cmd using old bsp\n");
     // Initiliaze NINA as BLE Peripheral
     GAPOC_NINA_AT_Send("E0");                   // Echo OFF
-    printf("Sent E0\n");
     //GAPOC_NINA_AT_Query("+CGMI", Resp_String);
     GAPOC_NINA_AT_Send("+UFACTORY");            // Restore factory defined configuration
-    printf("Sent +UFACTORY\n");
     GAPOC_NINA_AT_Send("+UBTUB=FFFFFFFFFFFF");  // Unbond all devices
     GAPOC_NINA_AT_Send("+UBTLE=2");             // BLE Role = Peripheral
     GAPOC_NINA_AT_Send("+UBTLN=GreenWaves-GAPOC");         // Set Local Bluetooth Name
     //GAPOC_NINA_AT_Send("+UBTLECFG=1,480");      // BLE Configuration Param#1 =  Min adv. interval = 480x625ns
     //GAPOC_NINA_AT_Send("+UBTLECFG=2,640");      // BLE Configuration Param#2 =  Max adv. interval = 640x625ns
+    GAPOC_NINA_AT_Send("+UMRS?");
+    #if 0
+    GAPOC_NINA_AT_Send("+UMRS=115200,1,8,1,1,1");
+    GAPOC_NINA_Uart_Set_Baud(115200);
+    printf("Change value\n");
+    GAPOC_NINA_AT_Send("+UMRS?");
+    GAPOC_NINA_AT_Send("&W");
+    printf("Record information.\n");
+    GAPOC_NINA_AT_Send("+CPWROFF");
+    printf("Reboot done.\n");
+    #endif
+    GAPOC_NINA_AT_Send("+UBTLN?");
     #else
     printf("Sending cmd using pmsis bsp\n");
     nina_b112_AT_send(&ble, "E0");
-    printf("Sent E0\n");
     nina_b112_AT_send(&ble, "+UFACTORY");
-    printf("Sent +UFACTORY\n");
     nina_b112_AT_send(&ble, "+UBTUB=FFFFFFFFFFFF");
     nina_b112_AT_send(&ble, "+UBTLE=2");
     nina_b112_AT_send(&ble, "+UBTLN=GreenWaves-GAPOC");
+    nina_b112_AT_send(&ble, "+UBTLN?");
+    nina_b112_AT_send(&ble, "+UMRS?");
+    //nina_b112_close(&ble);
     #endif
 
     DBG_PRINT("AT Config Done\n");
