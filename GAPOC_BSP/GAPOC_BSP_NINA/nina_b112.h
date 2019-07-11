@@ -25,9 +25,9 @@
  ******************************************************************************/
 
 #ifdef DBG
-#define DBG_PRINTF printf
+#define DBG_PRINT printf
 #else
-#define DBG_PRINTF(...) ((void) 0)
+#define DBG_PRINT(...) ((void) 0)
 #endif  /* DEBUG */
 
 

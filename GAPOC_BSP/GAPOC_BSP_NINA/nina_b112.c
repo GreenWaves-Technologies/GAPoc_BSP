@@ -92,7 +92,6 @@ int32_t nina_b112_open(nina_t *ble)
     {
         return -4;
     }
-    new_rx_byte = 0;
     return 0;
 }
 
@@ -106,12 +105,18 @@ void nina_b112_close(nina_t *ble)
 
 void nina_b112_AT_cmd_send(nina_t *ble, const char* cmd)
 {
-    /* Optimize : malloc(sizeof(AT) + strlen(cmd) + sizeof(S3str)). */
-    static uint8_t cmd_string[AT_CMD_ARRAY_LENGTH];
+    uint32_t cmd_length = strlen(cmd);
+    uint32_t length = cmd_length + 2 + 1; /* cmd length + "AT" + '\r'. */
+    char *cmd_string = (char *) pmsis_l2_malloc(sizeof(char) * length);
+    if (cmd_string == NULL)
+    {
+        return;
+    }
     strcpy((char*) cmd_string, (char*) "AT");
     strcat((char*) cmd_string, (char*) cmd);
     strcat((char*) cmd_string, (char*) S3str);
-    pi_uart_write(&(ble->uart_device), cmd_string, strlen((char *) cmd_string));
+    pi_uart_write(&(ble->uart_device), cmd_string, strlen(cmd_string));
+    pmsis_l2_malloc_free(cmd_string, sizeof(char) * length);
 }
 
 /* Uart rx callback. */
@@ -121,38 +126,37 @@ static void __nina_b112_data_received(void *arg)
     static uint32_t index = 0;
     static unsigned char prev_byte = 0;
     if ((at_resp_state == AT_RESP_IN_PROGRESS) &&
-        (prev_byte == S3char) && (rx_char == S4char))
+        (prev_byte == S3char) && (*(param->ble->rx_char) == S4char))
     {
-        rx_buffer[--index] = '\0';
+        param->ble->rx_buffer[--index] = '\0';
         at_resp_state = AT_RESP_DONE;
     }
     else
     {
         pi_task_callback_no_mutex(param->task, __nina_b112_data_received, param);
-        pi_uart_read_async(&(param->ble->uart_device), (void *) &rx_char, sizeof(uint8_t), param->task);
+        pi_uart_read_async(&(param->ble->uart_device), (void *) param->ble->rx_char, sizeof(uint8_t), param->task);
         if ((at_resp_state == AT_RESP_NOT_STARTED) &&
-            (prev_byte == S3char) && (rx_char == S4char))
+            (prev_byte == S3char) && (*(param->ble->rx_char) == S4char))
         {
             index = 0;
             at_resp_state = AT_RESP_IN_PROGRESS;
         }
         else if (at_resp_state == AT_RESP_IN_PROGRESS)
         {
-            rx_buffer[index++] = rx_char;
+            param->ble->rx_buffer[index++] = *(param->ble->rx_char);
         }
     }
-    prev_byte = rx_char;
+    prev_byte = *(param->ble->rx_char);
 }
 
 uint32_t nina_b112_AT_send(nina_t *ble, const char* cmd)
 {
     at_resp_state = AT_RESP_NOT_STARTED;
-    new_rx_byte = 0;
     pi_task_t rx_cb = {0};
     param.ble = ble;
     param.task = &rx_cb;
     pi_task_callback_no_mutex(&rx_cb, __nina_b112_data_received, &param);
-    pi_uart_read_async(&(ble->uart_device), (void *) &rx_char, sizeof(uint8_t), &rx_cb);
+    pi_uart_read_async(&(ble->uart_device), (void *) ble->rx_char, sizeof(uint8_t), &rx_cb);
     nina_b112_AT_cmd_send(ble, cmd);
 
     write_res_t write_result = WR_RES_NA;
@@ -160,28 +164,28 @@ uint32_t nina_b112_AT_send(nina_t *ble, const char* cmd)
     {
         pi_yield();
     }
-    DBG_PRINTF("Got write resp : %s\n", rx_buffer);
+    DBG_PRINT("Got write resp : %s\n", ble->rx_buffer);
 
-    uint32_t last_char_pos = strlen((const char *) rx_buffer) - 1;
-    if ((rx_buffer[last_char_pos - 1] == 'O') &&
-        (rx_buffer[last_char_pos - 0] == 'K'))
+    uint32_t last_char_pos = strlen((const char *) ble->rx_buffer) - 1;
+    if ((ble->rx_buffer[last_char_pos - 1] == 'O') &&
+        (ble->rx_buffer[last_char_pos - 0] == 'K'))
     {
-        DBG_PRINTF("OK response received !\n");
+        DBG_PRINT("OK response received !\n");
         write_result = WR_RES_OK;
     }
-    else if ((rx_buffer[last_char_pos - 4] == 'E') &&
-             (rx_buffer[last_char_pos - 3] == 'R') &&
-             (rx_buffer[last_char_pos - 2] == 'R') &&
-             (rx_buffer[last_char_pos - 1] == 'O') &&
-             (rx_buffer[last_char_pos - 0] == 'R'))
+    else if ((ble->rx_buffer[last_char_pos - 4] == 'E') &&
+             (ble->rx_buffer[last_char_pos - 3] == 'R') &&
+             (ble->rx_buffer[last_char_pos - 2] == 'R') &&
+             (ble->rx_buffer[last_char_pos - 1] == 'O') &&
+             (ble->rx_buffer[last_char_pos - 0] == 'R'))
     {
-        DBG_PRINTF("Error response received !\n");
+        DBG_PRINT("Error response received !\n");
         write_result = WR_RES_ERR;
     }
     else
     {
-        DBG_PRINTF("Unsollicited/unrecognised response received : %s !\n",
-                     rx_buffer);
+        DBG_PRINT("Unsollicited/unrecognised response received : %s !\n",
+                  ble->rx_buffer);
         write_result = WR_RES_UNSOL;
     }
     return write_result;
@@ -190,42 +194,36 @@ uint32_t nina_b112_AT_send(nina_t *ble, const char* cmd)
 void nina_b112_AT_query(nina_t *ble, const char* cmd, char* resp)
 {
     at_resp_state = AT_RESP_NOT_STARTED;
-    new_rx_byte = 0;
     pi_task_t rx_cb = {0};
+    param.ble = ble;
+    param.task = &rx_cb;
     pi_task_callback_no_mutex(&rx_cb, __nina_b112_data_received, ble);
-    pi_uart_read_async(&(ble->uart_device), ble->rx_char, sizeof(uint8_t), &rx_cb);
+    pi_uart_read_async(&(ble->uart_device), (void *) ble->rx_char, sizeof(uint8_t), &rx_cb);
     nina_b112_AT_cmd_send(ble, cmd);
 
     while(at_resp_state != AT_RESP_DONE)
     {
-        if (new_rx_byte)
-        {
-            new_rx_byte = 0;
-            pi_uart_read_async(&(ble->uart_device), ble->rx_char, sizeof(uint8_t), &rx_cb);
-        }
+        pi_yield();
     }
     strcpy((char *) resp, (char *) ble->rx_buffer);
-    DBG_PRINTF("Got query resp : %s\n", resp);
+    DBG_PRINT("Got query resp : %s\n", resp);
 }
 
 void nina_b112_wait_for_event(nina_t *ble, char* resp)
 {
     at_resp_state = AT_RESP_NOT_STARTED;
-    new_rx_byte = 0;
     pi_task_t rx_cb = {0};
-    pi_task_callback_no_mutex(&rx_cb, __nina_b112_data_received, ble);
-    pi_uart_read_async(&(ble->uart_device), ble->rx_char, sizeof(uint8_t), &rx_cb);
+    param.ble = ble;
+    param.task = &rx_cb;
+    pi_task_callback_no_mutex(&rx_cb, __nina_b112_data_received, &param);
+    pi_uart_read_async(&(ble->uart_device), (void *) ble->rx_char, sizeof(uint8_t), &rx_cb);
 
-    while(at_resp_state != AT_RESP_DONE)
+    while (at_resp_state != AT_RESP_DONE)
     {
-        if (new_rx_byte)
-        {
-            new_rx_byte = 0;
-            pi_uart_read_async(&(ble->uart_device), ble->rx_char, sizeof(uint8_t), &rx_cb);
-        }
+        pi_yield();
     }
     strcpy((char *) resp, (char *) ble->rx_buffer);
-    DBG_PRINTF("Got unsollicited resp : %s\n", resp);
+    DBG_PRINT("Got unsollicited resp : %s\n", resp);
 }
 
 void nina_b112_get_data_blocking(nina_t *ble, uint8_t* buffer, uint32_t size)
