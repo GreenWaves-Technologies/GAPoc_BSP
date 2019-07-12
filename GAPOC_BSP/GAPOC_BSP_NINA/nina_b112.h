@@ -65,6 +65,9 @@ typedef enum _at_resp_state
     AT_RESP_DONE
 } at_resp_state_t;
 
+/* Callback. */
+typedef void (*ble_callback_f)(void *arg);
+
 /*******************************************************************************
  * API
  ******************************************************************************/
@@ -88,11 +91,16 @@ void nina_b112_get_data_blocking(nina_t *ble, uint8_t* buffer, uint32_t size);
 
 void nina_b112_get_data(nina_t *ble, uint8_t* buffer, uint32_t size, struct pi_task *task);
 
-void nina_b112_exit_data_mode(nina_t *ble);
-
-#if 0
 void nina_b112_send_data_blocking(nina_t *ble, const uint8_t* buffer, uint32_t size);
 
-void nina_b112_send_data(nina_t *ble, const uint8_t* buffer, uint32_t size);
-#endif
+void nina_b112_send_data(nina_t *ble, const uint8_t* buffer, uint32_t size, struct pi_task *task);
+
+void nina_b112_get_data_async(nina_t *ble, uint8_t* buffer, uint32_t size,
+                              ble_callback_f callback, void *arg);
+
+void nina_b112_send_data_async(nina_t *ble, const uint8_t* buffer, uint32_t size,
+                               ble_callback_f callback, void *arg);
+
+void nina_b112_exit_data_mode(nina_t *ble);
+
 #endif  /* __BSP_NINA_B112_H__ */

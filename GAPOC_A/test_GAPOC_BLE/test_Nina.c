@@ -355,7 +355,11 @@ void vTestBLE(void *parameters)
     }
 
     #ifdef __FREERTOS__
+    #if (USE_PMSIS == 0)
     vTaskSuspend(NULL);
+    #else
+    pmsis_exit(0);
+    #endif
     #endif
 
 }
